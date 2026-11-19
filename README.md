@@ -7,6 +7,8 @@ Implementado e testado: janela principal, menus, sistema de projetos (criar/abri
 **BIO-001 (menu Pesquisa):** compara dois mecanismos de 2 segmentos com animação 2D, gráficos, CSV, PNG e relatório .md; experimentos ficam no projeto e são reexecutáveis. Parâmetros padrão DEMONSTRATIVOS.
 **SIM-001 (menu Simulação):** dinâmica passiva (pêndulo duplo) em thread separada, com progresso, cancelamento e deriva de energia. **Relatório PDF** do BIO-001.
 **Viewport 3D (Fase 2):** menu Modelo > Novo modelo de membro inferior; sliders de pose (aba Pose); CM e projeção no solo.
+**EXO-001 (menu Pesquisa, Ctrl+Shift+E):** assistência articular por exoesqueleto (atuador com curva torque-velocidade; modos proporcional e gravidade); compara torque requerido sem exo, com exo e o torque humano residual. Parâmetros DEMONSTRATIVOS.
+
 **BIO-002 (menu Pesquisa):** comparação com 3 segmentos (pé/metatarso incluídos; 3ª junta = tornozelo / jarrete).
 **Planejado (não implementado):** gráficos, CSV/PDF, MuJoCo/OpenSim, IA. Itens de menu correspondentes ficam desabilitados e marcados "planejado".
 

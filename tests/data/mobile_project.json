@@ -1,11 +1,11 @@
 {
   "format": "nexus-biomechanics-project",
   "schema_version": 1,
-  "id": "b6c3ba2c-f844-4a6d-b6e9-2cad0c6e9484",
+  "id": "9c07eda9-379c-49a8-8e43-9f574a3b56f2",
   "name": "Teste mobile",
   "description": "",
-  "created": "2026-11-19T14:21:41+00:00",
-  "modified": "2026-11-19T14:21:42+00:00",
+  "created": "2026-11-19T14:25:51+00:00",
+  "modified": "2026-11-19T14:25:51+00:00",
   "models": [
     {
       "name": "Membro inferior simplificado (DEMONSTRATIVO)",
@@ -90,7 +90,7 @@
       "name": "BIO-001 #1",
       "id": "BIO-001-001",
       "type": "BIO-001",
-      "created": "2026-11-19T14:21:41+00:00",
+      "created": "2026-11-19T14:25:51+00:00",
       "params": {
         "duration_s": 1,
         "samples": 201,
@@ -190,7 +190,7 @@
       "name": "BIO-002 #1",
       "id": "BIO-002-001",
       "type": "BIO-002",
-      "created": "2026-11-19T14:21:41+00:00",
+      "created": "2026-11-19T14:25:51+00:00",
       "params": {
         "duration_s": 1,
         "samples": 151,
@@ -337,10 +337,99 @@
       "results_file": null
     },
     {
+      "name": "EXO-001 #1",
+      "id": "EXO-001-001",
+      "type": "EXO-001",
+      "created": "2026-11-19T14:25:51+00:00",
+      "params": {
+        "model": {
+          "name": "A — Membro inferior humano simplificado (3 seg.)",
+          "lengths_m": [
+            0.43,
+            0.43,
+            0.24
+          ],
+          "masses_kg": [
+            7,
+            3.2,
+            1
+          ],
+          "com_fracs": [
+            0.43,
+            0.43,
+            0.45
+          ],
+          "q_start_deg": [
+            -90,
+            0,
+            90
+          ],
+          "q_end_deg": [
+            -60,
+            60,
+            80
+          ],
+          "joint_names": [
+            "quadril",
+            "joelho",
+            "tornozelo"
+          ],
+          "tip_force_n": [
+            0,
+            0
+          ],
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        },
+        "exo": {
+          "joint_index": 1,
+          "mode": "proportional",
+          "gain": 0.5,
+          "added_masses_kg": [
+            0,
+            1.2,
+            0.3
+          ],
+          "actuator": {
+            "tau_stall_nm": 40,
+            "omega_noload_rad_s": 8,
+            "efficiency": 0.7,
+            "mass_kg": 1.5
+          }
+        },
+        "duration_s": 1,
+        "samples": 201
+      },
+      "summary": {
+        "A": {
+          "joint_index": 1,
+          "mode": "proportional",
+          "gain": 0.5,
+          "baseline_peak_torque_nm": 10.203172117363877,
+          "loaded_peak_torque_nm": 13.69930365297304,
+          "human_peak_torque_nm": 6.84965182648652,
+          "baseline_rms_torque_nm": 7.080070342633405,
+          "loaded_rms_torque_nm": 9.481737338547575,
+          "human_rms_torque_nm": 4.740868669273787,
+          "human_peak_reduction_vs_baseline_pct": 32.867428406605995,
+          "actuator_peak_torque_nm": 6.84965182648652,
+          "actuator_peak_mech_power_w": 10.847170482645081,
+          "actuator_electrical_energy_j": 7.472722724815681,
+          "saturation_fraction": 0,
+          "added_mass_total_kg": 1.5,
+          "total_length_m": 1.1
+        },
+        "messages": [
+          "Nota: a massa do exoesqueleto aumenta o torque requerido da junta (efeito incluído no cálculo).",
+          "Parâmetros demonstrativos: resultados ilustram o método, sem validade para dispositivos reais."
+        ]
+      },
+      "results_file": null
+    },
+    {
       "name": "SIM-001 #1",
       "id": "SIM-001-001",
       "type": "SIM-001",
-      "created": "2026-11-19T14:21:42+00:00",
+      "created": "2026-11-19T14:25:51+00:00",
       "params": {
         "name": "Cadeia de 2 segmentos (DEMONSTRATIVO)",
         "l1": 0.43,

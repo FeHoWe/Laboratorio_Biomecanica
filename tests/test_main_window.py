@@ -170,3 +170,27 @@ def test_bio002_gui_flow_and_rerun_and_exports(win, tmp_path, monkeypatch):
     before = win.last_result["B"]["tau"].copy()
     win.rerun_selected()
     assert (win.last_result["B"]["tau"] == before).all()
+
+
+def test_exo001_gui_flow(win, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QFileDialog
+    from interface.dialogs.exo001_dialog import Exo001Dialog
+    monkeypatch.setattr(Exo001Dialog, "exec", lambda self: True)
+    assert not win.act_exo.isEnabled()
+    win.manager.create(tmp_path / "p", "P")
+    assert win.act_exo.isEnabled()
+    win.new_exo001()
+    assert win.last_result["id"] == "EXO-001"
+    assert win.manager.data["experiments"][0]["id"] == "EXO-001-001"
+    assert (tmp_path / "p" / "results" / "EXO-001-001.csv").is_file()
+    assert "Pico humano" in win.results.toPlainText()
+    assert win.act_csv.isEnabled() and win.act_md.isEnabled() and win.act_png.isEnabled()
+    assert not win.act_compare.isEnabled() and not win.act_pdf.isEnabled()
+    for name, fn in (("e.csv", win.export_csv), ("e.md", win.export_report), ("e.png", win.export_png)):
+        monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, n=name: (str(tmp_path / n), ""))
+        fn()
+        assert (tmp_path / name).stat().st_size > 100
+    before = win.last_result["A"]["tau_human"].copy()
+    win.tree.setCurrentItem(win.tree.findItems("EXO-001 #1", __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.MatchRecursive)[0])
+    win.rerun_selected()
+    assert (win.last_result["A"]["tau_human"] == before).all()

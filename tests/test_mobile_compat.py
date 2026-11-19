@@ -24,7 +24,7 @@ def pm(tmp_path):
 
 
 def test_mobile_project_opens_and_validates(pm):
-    assert pm.name == "Teste mobile" and len(pm.data["models"]) == 1 and len(pm.data["experiments"]) == 3
+    assert pm.name == "Teste mobile" and len(pm.data["models"]) == 1 and len(pm.data["experiments"]) == 4
 
 
 def test_model_from_mobile_loads_and_matches_pose(pm):
@@ -56,3 +56,14 @@ def test_bio002_reproduces_mobile_summary(pm):
     for key in ("A", "B"):
         for field, vals in exp["summary"][key].items():
             assert np.allclose(res[key]["summary"][field], vals, rtol=1e-6, atol=1e-8), (key, field)
+
+
+def test_exo001_reproduces_mobile_summary(pm):
+    from exoskeleton.analysis import assist as ex
+    exp = next(e for e in pm.data["experiments"] if e["type"] == "EXO-001")
+    res = ex.run(ex.Exo001Params.from_dict(exp["params"]))
+    for field, val in exp["summary"]["A"].items():
+        if isinstance(val, str):
+            assert res["A"]["summary"][field] == val
+        else:
+            assert np.allclose(res["A"]["summary"][field], val, rtol=1e-6, atol=1e-8), field

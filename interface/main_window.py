@@ -31,6 +31,8 @@ from biomechanics.human_model.lower_limb import LowerLimbModel, JointLimitError
 from PySide6.QtCore import Qt as _Qt  # noqa: F401
 from research.experiments import bio001, bio002, passive_sim
 from interface.dialogs.bio002_dialog import Bio002Dialog
+from interface.dialogs.exo001_dialog import Exo001Dialog
+from exoskeleton.analysis import assist as exo001
 from infrastructure.workers.worker import TaskThread
 from interface.dialogs.passive_dialog import PassiveDialog
 from PySide6.QtWidgets import QProgressDialog
@@ -175,6 +177,7 @@ class MainWindow(QMainWindow):
         m = mb.addMenu("&Pesquisa")
         self.act_bio = self._act(m, "Novo experimento &BIO-001…", self.new_bio001, "Ctrl+B", enabled=False)
         self.act_bio2 = self._act(m, "Novo experimento BIO-00&2 (3 segmentos)…", self.new_bio002, "Ctrl+Shift+B", enabled=False)
+        self.act_exo = self._act(m, "Novo experimento EXO-001 (exoesqueleto)…", self.new_exo001, "Ctrl+Shift+E", enabled=False)
         self.act_rerun = self._act(m, "Reexecutar experimento selecionado", self.rerun_selected, enabled=False)
         m.addSeparator()
         self.act_csv = self._act(m, "Exportar CSV…", self.export_csv, enabled=False)
@@ -192,13 +195,14 @@ class MainWindow(QMainWindow):
     def _refresh(self, **_kw) -> None:
         pm = self.manager
         is_open = pm.is_open
-        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_bio2, self.act_passive, self.act_limb):
+        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_bio2, self.act_exo, self.act_passive, self.act_limb):
             a.setEnabled(is_open)
-        has = is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID)
+        has = is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID, exo001.EXPERIMENT_ID)
         any_res = is_open and self.last_result is not None
         self.act_csv.setEnabled(any_res)
-        for a in (self.act_md, self.act_png, self.act_compare):
+        for a in (self.act_md, self.act_png):
             a.setEnabled(has)
+        self.act_compare.setEnabled(has and self.last_result["id"] != exo001.EXPERIMENT_ID)
         self.act_pdf.setEnabled(is_open and self.last_result is not None and self.last_result["id"] == bio001.EXPERIMENT_ID)
         self.act_rerun.setEnabled(is_open and self._selected_experiment() is not None)
         self.stack.setCurrentWidget(self.viewport if is_open else self.dashboard)
@@ -386,8 +390,29 @@ class MainWindow(QMainWindow):
                     lambda path: bio002.export_csv(res, path))
         self._show_result(res)
 
+    def new_exo001(self) -> None:
+        dlg = Exo001Dialog(parent=self)
+        if not dlg.exec():
+            return
+        params = dlg.params()
+        try:
+            res = exo001.run(params)
+        except NexusError as exc:
+            log.error("%s", exc)
+            QMessageBox.critical(self, APP_NAME, str(exc))
+            return
+        for m in res["messages"]:
+            log.warning(m) if m.startswith("AVISO") else log.info(m)
+        self._guard(self.manager.add_experiment, exo001.EXPERIMENT_ID, params.to_dict(), exo001.summary_dict(res),
+                    lambda path: exo001.export_csv(res, path))
+        self._show_result(res)
+
     def rerun_selected(self) -> None:
         exp = self._selected_experiment()
+        if exp and exp.get("type") == exo001.EXPERIMENT_ID:
+            self._show_result(exo001.run(exo001.Exo001Params.from_dict(exp["params"])))
+            log.info("Reexecução de %s concluída (determinística)", exp["id"])
+            return
         if exp and exp.get("type") == bio002.EXPERIMENT_ID:
             res = bio002.run(bio002.Bio002Params.from_dict(exp["params"]))
             self._show_result(res)
@@ -416,7 +441,11 @@ class MainWindow(QMainWindow):
     def _show_result(self, res: dict) -> None:
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         from visualization.charts.bio001_plots import make_figure, make_figure_n
-        make_figure = make_figure_n if res["A"]["q"].shape[1] > 2 else make_figure
+        from visualization.charts.bio001_plots import make_exo_figure
+        if res["id"] == exo001.EXPERIMENT_ID:
+            make_figure = make_exo_figure
+        else:
+            make_figure = make_figure_n if res["A"]["q"].shape[1] > 2 else make_figure
         self.last_result = res
         self.anim.set_result(res)
         while self.plot_layout.count():
@@ -425,7 +454,12 @@ class MainWindow(QMainWindow):
                 w.deleteLater()
         self.plot_layout.addWidget(FigureCanvasQTAgg(make_figure(res)))
         lines = [f"{res['id']} — resultados (parâmetros DEMONSTRATIVOS)", ""]
-        for c in res["comparison"].values():
+        if res["id"] == exo001.EXPERIMENT_ID:
+            sm = res["A"]["summary"]
+            lines += [f"Pico sem exo: {sm['baseline_peak_torque_nm']:.4g} N·m | com exo sem assist.: {sm['loaded_peak_torque_nm']:.4g} N·m",
+                      f"Pico humano com assistência: {sm['human_peak_torque_nm']:.4g} N·m ({sm['human_peak_reduction_vs_baseline_pct']:.3g}% vs sem exo)",
+                      f"Atuador: pico {sm['actuator_peak_torque_nm']:.4g} N·m, {sm['actuator_peak_mech_power_w']:.4g} W; energia elétrica {sm['actuator_electrical_energy_j']:.4g} J; saturação {100 * sm['saturation_fraction']:.1f}%"]
+        for c in (res.get("comparison") or {}).values():
             lines.append(f"{c['label']}\n   A: {' / '.join(f'{v:.4g}' for v in c['A'])}   B: {' / '.join(f'{v:.4g}' for v in c['B'])}"
                          f"   (B/A: {', '.join('—' if r is None else f'{r:.3g}' for r in c['ratio_B_over_A'])})")
         lines += [""] + res["messages"]
@@ -503,7 +537,7 @@ class MainWindow(QMainWindow):
 
     def _module(self):
         return {bio001.EXPERIMENT_ID: bio001, bio002.EXPERIMENT_ID: bio002,
-                passive_sim.EXPERIMENT_ID: passive_sim}[self.last_result["id"]]
+                passive_sim.EXPERIMENT_ID: passive_sim, exo001.EXPERIMENT_ID: exo001}[self.last_result["id"]]
 
     def export_report(self) -> None:
         def w(p):

@@ -1,4 +1,9 @@
 # Changelog
+## 0.7.0 — EXO-001: Exoesqueleto Lab (Fase 6, início)
+- Atuador de junta com curva torque-velocidade linear e eficiência (DEMONSTRATIVO); módulo `exoskeleton/`.
+- EXO-001: dinâmica inversa da cadeia de 3 segmentos sem e com a massa do exoesqueleto; assistência proporcional ou de gravidade com ganho; saturação pela curva τ-ω (com aviso); torque humano residual, potência mecânica e energia elétrica do atuador; CSV, relatório .md, PNG, registro e reexecução no projeto.
+- Mobile: aba EXO-001 (resultados conferidos contra o Python); projetos do celular com EXO-001 reproduzem no desktop.
+- 104 testes. Não verificado: Windows, build com VTK, controle em malha fechada (não existe), validação experimental.
 ## 0.6.0 — BIO-002: comparação com 3 segmentos (Fase 4)
 - Dinâmica de Lagrange para cadeia planar de N segmentos (validada contra o modelo de 2 segmentos em 25 poses aleatórias, e contra soluções analíticas e conservação de energia para N=3).
 - BIO-002: humano (coxa, perna, pé) vs. animal (fêmur, tíbia, metatarso/jarrete): animação, gráficos por junta, CSV, relatório .md, registro e reexecução no projeto.
