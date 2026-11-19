@@ -33,7 +33,7 @@ def test_no_project_disables_actions(win):
 def test_planned_items_are_disabled(win):
     for m in ("Modelo", "Biomecânica"):
         menu = next(a.menu() for a in win.menuBar().actions() if a.text() == m)
-        assert all(not a.isEnabled() and "planejado" in a.text() for a in menu.actions())
+        assert all(not a.isEnabled() and "planejado" in a.text() for a in menu.actions() if a is not win.act_limb)
 
 
 def test_open_project_updates_ui(win, tmp_path):
@@ -129,3 +129,22 @@ def test_passive_sim_gui_with_worker(win, tmp_path, qtbot, monkeypatch):
     assert (tmp_path / "p" / "results" / "SIM-001-001.csv").is_file()
     assert "Deriva" in win.results.toPlainText()
     assert win.act_csv.isEnabled() and not win.act_pdf.isEnabled()
+
+
+def test_limb_model_flow(win, tmp_path):
+    win.manager.create(tmp_path / "p", "P")
+    assert win.act_limb.isEnabled()
+    win.new_limb()
+    assert len(win.manager.data["models"]) == 1 and win.limb is not None
+    assert win.pose.isEnabled() and set(win.pose.sliders) == {"hip", "knee", "ankle"}
+    win.pose.sliders["knee"].setValue(60)
+    assert win.limb.angles_deg["knee"] == 60
+    assert win.manager.data["models"][0]["angles_deg"]["knee"] == 60 and win.manager.dirty
+    win.save_project()
+    win.manager.close()
+    win.manager.open(tmp_path / "p")
+    win._refresh()
+    win.tree.setCurrentItem(win.tree.topLevelItem(0).child(0).child(0))  # seleciona o modelo
+    assert win.limb.angles_deg["knee"] == 60 and win.pose.sliders["knee"].value() == 60
+    win.pose.reset()
+    assert win.limb.angles_deg["knee"] == 0

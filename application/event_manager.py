@@ -11,6 +11,7 @@ PROJECT_OPENED = "project.opened"
 PROJECT_CLOSED = "project.closed"
 PROJECT_SAVED = "project.saved"
 PROJECT_CHANGED = "project.changed"
+MODEL_CHANGED = "model.changed"  # alteração leve (pose); não reconstrói a árvore
 
 
 class EventManager:

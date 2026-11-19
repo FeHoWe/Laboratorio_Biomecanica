@@ -8,6 +8,7 @@ pip install -r requirements.txt
 python main.py
 python -m pytest
 ```
+Requer OpenGL para o viewport 3D (drivers de vídeo atualizados). Sem OpenGL, o app abre e informa o motivo.
 Logs e projetos recentes: `%USERPROFILE%\.nexus_biomechanics\` (altere com a variável NEXUS_HOME).
 ## Gerar o executável (.exe)
 Com o venv ativo: `build_windows.bat` -> `dist\NEXUS_BIOMECHANICS\NEXUS_BIOMECHANICS.exe` (pasta portátil).

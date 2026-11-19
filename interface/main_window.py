@@ -25,7 +25,9 @@ from interface.panels.console_panel import ConsolePanel
 from interface.panels.properties_panel import PropertiesPanel
 from interface.dialogs.bio001_dialog import Bio001Dialog
 from interface.widgets.animation_2d import Animation2D
-from interface.widgets.viewport_placeholder import ViewportPlaceholder
+from interface.widgets.viewport3d import Viewport3D
+from interface.panels.pose_panel import PosePanel
+from biomechanics.human_model.lower_limb import LowerLimbModel, JointLimitError
 from PySide6.QtCore import Qt as _Qt  # noqa: F401
 from research.experiments import bio001, passive_sim
 from infrastructure.workers.worker import TaskThread
@@ -35,7 +37,7 @@ from PySide6.QtWidgets import QProgressDialog
 log = logging.getLogger("nexus.ui")
 
 PLANNED = {
-    "Modelo": [("Editor 3D de modelo e articulações", "Fase 2"), ("Importar STL", "Fase 2")],
+    "Modelo": [("Importar STL", "Fase 2"), ("Importar STEP — integração CAD futura", "futuro")],
     "Biomecânica": [("Modelo de membro inferior com 3 segmentos", "Fase 4"), ("Músculos / OpenSim", "Fase 6")],
     "Simulação": [("Simulação dinâmica interativa", "Fase 4"), ("Integração MuJoCo", "Fase 6")],
 }
@@ -50,6 +52,7 @@ class MainWindow(QMainWindow):
         self._build_central()
         self._build_docks()
         self._build_menus()
+        self.tree.selection_info.connect(self._tree_selected)
         self.tree.selection_info.connect(lambda *_: self.act_rerun.setEnabled(
             self.manager.is_open and self._selected_experiment() is not None))
         self._status = QLabel()
@@ -58,6 +61,7 @@ class MainWindow(QMainWindow):
         manager.events.subscribe(ev.PROJECT_CLOSED, self._refresh)
         manager.events.subscribe(ev.PROJECT_SAVED, self._refresh)
         manager.events.subscribe(ev.PROJECT_CHANGED, self._refresh)
+        manager.events.subscribe(ev.MODEL_CHANGED, self._refresh_title)
         self._refresh()
         log.info("%s v%s iniciado (%s)", APP_NAME, __version__, PHASE)
 
@@ -66,12 +70,12 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.dashboard = Dashboard()
         self.viewport = QTabWidget()  # área central quando há projeto aberto
-        self.viewport3d = ViewportPlaceholder()
+        self.viewport3d = Viewport3D()
         self.anim = Animation2D()
         self.plot_host = QWidget()
         self.plot_layout = QVBoxLayout(self.plot_host)
         self.plot_layout.addWidget(QLabel("Execute BIO-001 (menu Pesquisa) para ver os gráficos."))
-        self.viewport.addTab(self.viewport3d, "Viewport 3D (planejado)")
+        self.viewport.addTab(self.viewport3d, "Viewport 3D")
         self.viewport.addTab(self.anim, "Animação 2D")
         self.viewport.addTab(self.plot_host, "Gráficos BIO-001")
         self.last_result: dict | None = None
@@ -90,8 +94,16 @@ class MainWindow(QMainWindow):
         self.results.setReadOnly(True)
         self.tree.selection_info.connect(self.props.show_item)
         self.props.apply_requested.connect(self._apply_metadata)
+        self.pose = PosePanel()
+        self.pose.angle_changed.connect(self._pose_changed)
+        self.viewport3d.segment_picked.connect(self._segment_picked)
+        self.model_index: int | None = None
+        self.limb: LowerLimbModel | None = None
         self.dock_tree = self._dock("Componentes", self.tree, Qt.LeftDockWidgetArea)
         self.dock_props = self._dock("Propriedades", self.props, Qt.RightDockWidgetArea)
+        self.dock_pose = self._dock("Pose", self.pose, Qt.RightDockWidgetArea)
+        self.tabifyDockWidget(self.dock_props, self.dock_pose)
+        self.dock_props.raise_()
         tabs = QTabWidget()
         self.bottom_tabs = tabs
         tabs.addTab(self.console, "Console")
@@ -133,7 +145,7 @@ class MainWindow(QMainWindow):
         self._act(m, "Desfazer / Refazer (planejado)", lambda: None, enabled=False)
 
         m = mb.addMenu("E&xibir")
-        for d in (self.dock_tree, self.dock_props, self.dock_bottom):
+        for d in (self.dock_tree, self.dock_props, self.dock_pose, self.dock_bottom):
             m.addAction(d.toggleViewAction())
         m.addSeparator()
         self._act(m, "Limpar console", self.console.clear)
@@ -144,6 +156,11 @@ class MainWindow(QMainWindow):
             for text, phase in items:
                 self._act(menu, f"{text} (planejado — {phase})", lambda: None, enabled=False)
 
+        mod = self.menus["Modelo"]
+        self.act_limb = QAction("Novo modelo de membro inferior (demonstrativo)", self)
+        self.act_limb.triggered.connect(self.new_limb)
+        self.act_limb.setEnabled(False)
+        mod.insertAction(mod.actions()[0], self.act_limb)
         sim = self.menus["Simulação"]
         sim.clear()
         self.act_passive = self._act(sim, "Dinâmica passiva SIM-001 (pêndulo duplo)…", self.new_passive, "Ctrl+Shift+P", enabled=False)
@@ -173,7 +190,7 @@ class MainWindow(QMainWindow):
     def _refresh(self, **_kw) -> None:
         pm = self.manager
         is_open = pm.is_open
-        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_passive):
+        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_passive, self.act_limb):
             a.setEnabled(is_open)
         has = is_open and self.last_result is not None and self.last_result["id"] == bio001.EXPERIMENT_ID
         any_res = is_open and self.last_result is not None
@@ -185,6 +202,8 @@ class MainWindow(QMainWindow):
         self.tree.populate(pm.data)
         if not is_open:
             self.props.clear()
+            self.limb, self.model_index = None, None
+            self.pose.set_model(None)
         recents = self.recent.list()
         self.dashboard.set_recent(recents)
         self.recent_menu.clear()
@@ -268,6 +287,64 @@ class MainWindow(QMainWindow):
 
     def _apply_metadata(self, name: str, description: str) -> None:
         self._guard(self.manager.update_metadata, name, description)
+
+    # ---- modelo 3D ----
+    def new_limb(self) -> None:
+        model = LowerLimbModel()
+        idx = self._guard_value(self.manager.add_model, model.to_dict())
+        if idx is not None:
+            self.load_model(idx)
+
+    def _guard_value(self, fn, *args):
+        try:
+            return fn(*args)
+        except NexusError as exc:
+            log.error("%s", exc)
+            QMessageBox.critical(self, APP_NAME, str(exc))
+        return None
+
+    def load_model(self, idx: int) -> None:
+        try:
+            self.limb = LowerLimbModel.from_dict(self.manager.data["models"][idx])
+        except (NexusError, KeyError, TypeError) as exc:
+            log.error("Modelo inválido: %s", exc)
+            return
+        self.model_index = idx
+        self.pose.set_model(self.limb)
+        self.viewport3d.set_model(self.limb)
+        self.viewport.setCurrentWidget(self.viewport3d)
+        self.dock_pose.raise_()
+
+    def _tree_selected(self, kind: str, payload: dict) -> None:
+        if kind == "model":
+            idx = self.manager.data["models"].index(payload) if payload in self.manager.data["models"] else None
+            if idx is not None and idx != self.model_index:
+                self.load_model(idx)
+
+    def _pose_changed(self, joint: str, deg: float) -> None:
+        if self.limb is None or self.model_index is None:
+            return
+        try:
+            self.limb.set_angle(joint, deg)
+        except JointLimitError as exc:
+            log.warning("%s", exc)
+            return
+        self.viewport3d.refresh()
+        self.manager.update_model(self.model_index, self.limb.to_dict())
+
+    def _segment_picked(self, name: str) -> None:
+        log.info("Segmento selecionado: %s", name)
+        if self.limb:
+            s = self.limb.segments[name]
+            self.props.show_item("segmento", {"nome": s.name, "comprimento (m)": s.length_m, "massa (kg)": s.mass_kg,
+                                              "CM (fração)": s.com_frac, "origem": s.source})
+        self.viewport3d.select(name)
+
+    def _refresh_title(self, **_kw) -> None:
+        pm = self.manager
+        if pm.is_open:
+            self.setWindowTitle(f"{pm.name}{' *' if pm.dirty else ''} — {APP_NAME}")
+            self._status.setText(f"{pm.path}  |  {'modificado' if pm.dirty else 'salvo'}")
 
     # ---- pesquisa: BIO-001 ----
     def _selected_experiment(self):

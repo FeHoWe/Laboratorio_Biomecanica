@@ -17,5 +17,7 @@ Sem atrito, sem músculos, juntas ideais, 2D. Parâmetros de segmentos são entr
 Trajetória de mínimo jerk por junta; torque = dinâmica inversa − Jᵀ F; potência = τ·q̇; trabalho por trapézios; torque normalizado τ/(M·g·L) para comparar escalas diferentes. Reprodutível: parâmetros + resultados determinísticos. Teste: trabalho dos torques = variação de energia mecânica.
 ## SIM-001
 M(q)q̈ + C + G = 0 integrado por RK4 (passo fixo). Validação: deriva relativa da energia mecânica; teste de equilíbrio pendurado e período de pêndulo.
+## Modelo de membro inferior
+Plano sagital exibido em 3D (x anterior, y cima, z lateral). Frames 4x4: T_seg = T_pai · T(comprimento) · Rz(ângulo). Quadril: Rz(+h); joelho: Rz(−k); tornozelo: Rz(+d). Limites articulares são entradas configuráveis, não valores clínicos. CM do membro = média ponderada de fêmur, tíbia e pé.
 ## Verificação
 Testes: transformações, conversão de unidades, FK/IK (ida e volta), Jacobiano vs diferenças finitas, torque analítico de braço horizontal, ∂U/∂q, consistência dinâmica direta/inversa, conservação de energia, período de pêndulo físico.

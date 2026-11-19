@@ -6,6 +6,7 @@ Implementado e testado: janela principal, menus, sistema de projetos (criar/abri
 **Núcleo matemático (Fase 3, sem interface ainda):** unidades, transformações 4x4, cinemática direta/inversa/Jacobiano/trajetória de mínimo jerk (2 segmentos), torque estático, dinâmica de Lagrange com RK4. Validado por 44 testes (soluções analíticas, período de pêndulo, conservação de energia).
 **BIO-001 (menu Pesquisa):** compara dois mecanismos de 2 segmentos com animação 2D, gráficos, CSV, PNG e relatório .md; experimentos ficam no projeto e são reexecutáveis. Parâmetros padrão DEMONSTRATIVOS.
 **SIM-001 (menu Simulação):** dinâmica passiva (pêndulo duplo) em thread separada, com progresso, cancelamento e deriva de energia. **Relatório PDF** do BIO-001.
-**Planejado (não implementado):** viewport 3D, gráficos, CSV/PDF, MuJoCo/OpenSim, IA. Itens de menu correspondentes ficam desabilitados e marcados "planejado".
+**Viewport 3D (Fase 2):** menu Modelo > Novo modelo de membro inferior; sliders de pose (aba Pose); CM e projeção no solo.
+**Planejado (não implementado):** gráficos, CSV/PDF, MuJoCo/OpenSim, IA. Itens de menu correspondentes ficam desabilitados e marcados "planejado".
 
 Execução: `python main.py` — Testes: `python -m pytest`. Veja INSTALLATION.md.

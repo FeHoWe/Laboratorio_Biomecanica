@@ -160,6 +160,24 @@ class ProjectManager:
         self.events.emit(ev.PROJECT_CHANGED, project=self)
         return entry
 
+    def add_model(self, model: dict) -> int:
+        data = self._require_open()
+        if not isinstance(model.get("name"), str):
+            raise ProjectValidationError("Modelo precisa de 'name'")
+        data["models"].append(model)
+        self.dirty = True
+        log.info("Modelo adicionado: %s", model["name"])
+        self.events.emit(ev.PROJECT_CHANGED, project=self)
+        return len(data["models"]) - 1
+
+    def update_model(self, index: int, model: dict) -> None:
+        data = self._require_open()
+        if not 0 <= index < len(data["models"]):
+            raise ProjectError(f"Modelo inexistente: {index}")
+        data["models"][index] = model
+        self.dirty = True
+        self.events.emit(ev.MODEL_CHANGED, project=self)
+
     # ---- internos ----
     def _set(self, data: dict, path: Path, dirty: bool) -> None:
         self.data, self.path, self.dirty = data, path, dirty

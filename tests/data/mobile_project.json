@@ -1,0 +1,229 @@
+{
+  "format": "nexus-biomechanics-project",
+  "schema_version": 1,
+  "id": "5aa21597-9533-46d1-81ad-46452bbfbc63",
+  "name": "Teste mobile",
+  "description": "",
+  "created": "2026-11-19T14:17:44+00:00",
+  "modified": "2026-11-19T14:17:44+00:00",
+  "models": [
+    {
+      "name": "Membro inferior simplificado (DEMONSTRATIVO)",
+      "segments": {
+        "pelvis": {
+          "name": "pelvis",
+          "length_m": 0.18,
+          "mass_kg": 8,
+          "com_frac": 0.5,
+          "radius_m": 0.07,
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        },
+        "femur": {
+          "name": "femur",
+          "length_m": 0.43,
+          "mass_kg": 7,
+          "com_frac": 0.43,
+          "radius_m": 0.05,
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        },
+        "tibia": {
+          "name": "tibia",
+          "length_m": 0.4,
+          "mass_kg": 3.2,
+          "com_frac": 0.43,
+          "radius_m": 0.035,
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        },
+        "fibula": {
+          "name": "fibula",
+          "length_m": 0.36,
+          "mass_kg": 0.3,
+          "com_frac": 0.43,
+          "radius_m": 0.012,
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        },
+        "foot": {
+          "name": "foot",
+          "length_m": 0.24,
+          "mass_kg": 1,
+          "com_frac": 0.45,
+          "radius_m": 0.03,
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        }
+      },
+      "joints": {
+        "hip": {
+          "name": "hip",
+          "parent": "pelvis",
+          "child": "femur",
+          "min_deg": -20,
+          "max_deg": 120,
+          "description": "flexão(+)/extensão(−)"
+        },
+        "knee": {
+          "name": "knee",
+          "parent": "femur",
+          "child": "tibia",
+          "min_deg": 0,
+          "max_deg": 140,
+          "description": "flexão(+)"
+        },
+        "ankle": {
+          "name": "ankle",
+          "parent": "tibia",
+          "child": "foot",
+          "min_deg": -50,
+          "max_deg": 30,
+          "description": "dorsiflexão(+)/plantiflexão(−)"
+        }
+      },
+      "angles_deg": {
+        "hip": 0,
+        "knee": 70,
+        "ankle": 0
+      },
+      "type": "lower_limb"
+    }
+  ],
+  "experiments": [
+    {
+      "name": "BIO-001 #1",
+      "id": "BIO-001-001",
+      "type": "BIO-001",
+      "created": "2026-11-19T14:17:44+00:00",
+      "params": {
+        "duration_s": 1,
+        "samples": 201,
+        "model_a": {
+          "name": "A — Membro inferior humano simplificado",
+          "l1": 0.43,
+          "m1": 7,
+          "com1": 0.43,
+          "l2": 0.43,
+          "m2": 3.2,
+          "com2": 0.43,
+          "q1_start_deg": -90,
+          "q1_end_deg": -60,
+          "q2_start_deg": 0,
+          "q2_end_deg": 60,
+          "tip_force_n": [
+            0,
+            0
+          ],
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        },
+        "model_b": {
+          "name": "B — Membro posterior animal simplificado (jarrete)",
+          "l1": 0.3,
+          "m1": 2,
+          "com1": 0.45,
+          "l2": 0.28,
+          "m2": 0.8,
+          "com2": 0.4,
+          "q1_start_deg": -90,
+          "q1_end_deg": -55,
+          "q2_start_deg": 0,
+          "q2_end_deg": -70,
+          "tip_force_n": [
+            0,
+            0
+          ],
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        }
+      },
+      "summary": {
+        "A": {
+          "peak_abs_torque_nm": [
+            18.8957474195,
+            5.802398672
+          ],
+          "peak_abs_ang_vel_rad_s": [
+            0.9817477042468105,
+            1.9634954084936205
+          ],
+          "peak_abs_power_w": [
+            9.740473549417164,
+            8.320641415715015
+          ],
+          "work_j": [
+            5.282482483369212,
+            4.028268408713093
+          ],
+          "total_mass_kg": 10.2,
+          "total_length_m": 0.86,
+          "peak_torque_normalized": [
+            0.2196568627450981,
+            0.06745098039215687
+          ]
+        },
+        "B": {
+          "peak_abs_torque_nm": [
+            2.364692556351451,
+            0.5039877570149621
+          ],
+          "peak_abs_ang_vel_rad_s": [
+            1.1453723216212788,
+            2.2907446432425576
+          ],
+          "peak_abs_power_w": [
+            1.5622502832256073,
+            0.8102750610908841
+          ],
+          "work_j": [
+            0.7455846986373463,
+            0.3178134584771523
+          ],
+          "total_mass_kg": 2.8,
+          "total_length_m": 0.5800000000000001,
+          "peak_torque_normalized": [
+            0.14848000852338658,
+            0.03164559648833359
+          ]
+        },
+        "messages": [
+          "Parâmetros demonstrativos: resultados ilustram o método, não anatomia real."
+        ]
+      },
+      "results_file": null
+    },
+    {
+      "name": "SIM-001 #1",
+      "id": "SIM-001-001",
+      "type": "SIM-001",
+      "created": "2026-11-19T14:17:44+00:00",
+      "params": {
+        "name": "Cadeia de 2 segmentos (DEMONSTRATIVO)",
+        "l1": 0.43,
+        "m1": 7,
+        "com1": 0.43,
+        "l2": 0.43,
+        "m2": 3.2,
+        "com2": 0.43,
+        "q1_deg": -30,
+        "q2_deg": 20,
+        "qd1_deg_s": 0,
+        "qd2_deg_s": 0,
+        "t_end_s": 3,
+        "dt_s": 0.001,
+        "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+      },
+      "summary": {
+        "A": {
+          "max_rel_energy_drift": 3.2304898968733205e-11,
+          "energy_initial_j": -14.100924702989815,
+          "energy_final_j": -14.100924703043217,
+          "total_length_m": 0.86,
+          "steps": 3000
+        },
+        "messages": [
+          "Deriva máxima de energia: 3.230e-11 (relativa). OK.",
+          "Parâmetros demonstrativos: resultados ilustram o método, não anatomia real."
+        ]
+      },
+      "results_file": null
+    }
+  ],
+  "settings": {
+    "units": "SI"
+  }
+}
