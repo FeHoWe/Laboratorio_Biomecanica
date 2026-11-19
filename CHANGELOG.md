@@ -1,4 +1,8 @@
 # Changelog
+## 0.9.0 — Vista 3D no celular
+- Aba "3D" no celular: render 3D por software (canvas, sem biblioteca externa) do mesmo membro inferior: câmera orbitável (arrastar), zoom/deslocar (dois dedos ou roda do mouse), grade, eixos, CM com projeção no solo, sliders de pose com limites, seleção de segmento por toque (mostra comprimento, massa, CM e fonte).
+- A geometria 3D do celular coincide com a do Python (4 poses, tolerância 1e-9) e é testada com jsdom (picking, câmera, sincronia dos sliders).
+- Diferenças do desktop: o celular não usa VTK/OpenGL (sombreamento simples, cilindros desenhados como traços); sem malhas STL. Não verificado em aparelho real (só jsdom); gestos de toque não foram testados em dispositivo.
 ## 0.8.0 — Relatório PDF para BIO-002 e EXO-001
 - "Exportar relatório PDF" agora vale para BIO-001, BIO-002 e EXO-001 (texto do relatório técnico + gráficos). SIM-001 continua sem PDF (usa .md/CSV); pedir PDF dele dá erro claro.
 - 105 testes. PDF conferido visualmente em Linux; aparência no Windows não verificada. Mobile: sem PDF (só desktop).

@@ -67,3 +67,18 @@ def test_exo001_reproduces_mobile_summary(pm):
             assert res["A"]["summary"][field] == val
         else:
             assert np.allclose(res["A"]["summary"][field], val, rtol=1e-6, atol=1e-8), field
+
+
+def test_limb3d_js_matches_python_segments():
+    """Geometria 3D do celular (limb3D) coincide com LowerLimbModel.segment_endpoints/total_com."""
+    poses = json.loads((DATA.parent / "limb3d_js.json").read_text(encoding="utf-8"))
+    assert len(poses) == 4
+    for p in poses:
+        m = LowerLimbModel()
+        for joint, a in zip(("hip", "knee", "ankle"), p["angles"]):
+            m.set_angle(joint, a)
+        ep = m.segment_endpoints()
+        for name, (a, b) in ep.items():
+            ja, jb = p["l"]["segs"][name]
+            assert np.allclose(a, ja, atol=1e-9) and np.allclose(b, jb, atol=1e-9), (p["angles"], name)
+        assert np.allclose(m.total_com(), p["l"]["com"], atol=1e-9)
