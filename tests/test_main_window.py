@@ -160,7 +160,7 @@ def test_bio002_gui_flow_and_rerun_and_exports(win, tmp_path, monkeypatch):
     assert win.last_result["id"] == "BIO-002" and win.manager.data["experiments"][0]["id"] == "BIO-002-001"
     assert (tmp_path / "p" / "results" / "BIO-002-001.csv").is_file()
     assert win.anim.canvas.result["A"]["points"].shape[1] == 4  # animação com 3 segmentos
-    assert not win.act_pdf.isEnabled() and win.act_md.isEnabled() and win.act_png.isEnabled()
+    assert win.act_pdf.isEnabled() and win.act_md.isEnabled() and win.act_png.isEnabled()
     for name, fn in (("b.csv", win.export_csv), ("b.md", win.export_report), ("b.png", win.export_png)):
         monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, n=name: (str(tmp_path / n), ""))
         fn()
@@ -185,7 +185,7 @@ def test_exo001_gui_flow(win, tmp_path, monkeypatch):
     assert (tmp_path / "p" / "results" / "EXO-001-001.csv").is_file()
     assert "Pico humano" in win.results.toPlainText()
     assert win.act_csv.isEnabled() and win.act_md.isEnabled() and win.act_png.isEnabled()
-    assert not win.act_compare.isEnabled() and not win.act_pdf.isEnabled()
+    assert not win.act_compare.isEnabled() and win.act_pdf.isEnabled()
     for name, fn in (("e.csv", win.export_csv), ("e.md", win.export_report), ("e.png", win.export_png)):
         monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, n=name: (str(tmp_path / n), ""))
         fn()

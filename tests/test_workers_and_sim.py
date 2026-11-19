@@ -71,3 +71,17 @@ def test_pdf_report(tmp_path):
     data = f.read_bytes()
     assert data.startswith(b"%PDF") and data.count(b"/Type /Page\n") + data.count(b"/Type /Page ") >= 2
     assert not (tmp_path / "r.pdf.tmp").exists()
+
+
+def test_pdf_report_bio002_exo001_and_unsupported(tmp_path):
+    import pytest
+    from core.exceptions import NexusError
+    from exoskeleton.analysis import assist
+    from research.experiments import bio002
+    for name, res in (("b2.pdf", bio002.run(bio002.default_params())), ("e.pdf", assist.run(assist.default_params()))):
+        f = tmp_path / name
+        export_pdf(res, f)
+        assert f.read_bytes()[:5] == b"%PDF-" and f.stat().st_size > 5000 and not (tmp_path / (name + ".tmp")).exists()
+    with pytest.raises(NexusError):
+        export_pdf({"id": "SIM-001"}, tmp_path / "x.pdf")
+    assert not (tmp_path / "x.pdf").exists()

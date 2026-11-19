@@ -8,8 +8,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.figure import Figure
 
 from core.exceptions import NexusError
-from research.experiments import bio001
-from visualization.charts.bio001_plots import make_figure
+from research.experiments import bio001, bio002
+from visualization.charts.bio001_plots import make_exo_figure, make_figure, make_figure_n
 
 LINES_PER_PAGE = 52
 
@@ -28,16 +28,30 @@ def _text_pages(md: str) -> list[Figure]:
     return pages
 
 
+def _spec(result: dict):
+    """(markdown, figura, título) conforme o experimento; levanta NexusError se não houver PDF para ele."""
+    rid = result.get("id")
+    if rid == bio001.EXPERIMENT_ID:
+        return bio001.report_markdown(result), make_figure(result, dark=False), "BIO-001 — Comparative Joint Mechanics"
+    if rid == bio002.EXPERIMENT_ID:
+        return bio002.report_markdown(result), make_figure_n(result, dark=False), "BIO-002 — Comparative Joint Mechanics (3 segmentos)"
+    if rid == "EXO-001":
+        from exoskeleton.analysis import assist
+        return assist.report_markdown(result), make_exo_figure(result, dark=False), "EXO-001 — Assistência articular por exoesqueleto"
+    raise NexusError(f"Relatório PDF não disponível para {rid}")
+
+
 def export_pdf(result: dict, path: Path | str) -> None:
+    md, fig_res, title = _spec(result)
     path = Path(path)
     tmp = path.with_suffix(path.suffix + ".tmp")
     try:
         with PdfPages(tmp) as pdf:
-            for fig in _text_pages(bio001.report_markdown(result)):
+            for fig in _text_pages(md):
                 pdf.savefig(fig)
-            pdf.savefig(make_figure(result, dark=False))
+            pdf.savefig(fig_res)
             info = pdf.infodict()
-            info["Title"] = "BIO-001 — Comparative Joint Mechanics"
+            info["Title"] = title
             info["Creator"] = "NEXUS BIOMECHANICS"
         tmp.replace(path)
     except OSError as exc:

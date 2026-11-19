@@ -203,7 +203,7 @@ class MainWindow(QMainWindow):
         for a in (self.act_md, self.act_png):
             a.setEnabled(has)
         self.act_compare.setEnabled(has and self.last_result["id"] != exo001.EXPERIMENT_ID)
-        self.act_pdf.setEnabled(is_open and self.last_result is not None and self.last_result["id"] == bio001.EXPERIMENT_ID)
+        self.act_pdf.setEnabled(is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID, exo001.EXPERIMENT_ID))
         self.act_rerun.setEnabled(is_open and self._selected_experiment() is not None)
         self.stack.setCurrentWidget(self.viewport if is_open else self.dashboard)
         self.tree.populate(pm.data)

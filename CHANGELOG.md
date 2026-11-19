@@ -1,4 +1,7 @@
 # Changelog
+## 0.8.0 — Relatório PDF para BIO-002 e EXO-001
+- "Exportar relatório PDF" agora vale para BIO-001, BIO-002 e EXO-001 (texto do relatório técnico + gráficos). SIM-001 continua sem PDF (usa .md/CSV); pedir PDF dele dá erro claro.
+- 105 testes. PDF conferido visualmente em Linux; aparência no Windows não verificada. Mobile: sem PDF (só desktop).
 ## 0.7.0 — EXO-001: Exoesqueleto Lab (Fase 6, início)
 - Atuador de junta com curva torque-velocidade linear e eficiência (DEMONSTRATIVO); módulo `exoskeleton/`.
 - EXO-001: dinâmica inversa da cadeia de 3 segmentos sem e com a massa do exoesqueleto; assistência proporcional ou de gravidade com ganho; saturação pela curva τ-ω (com aviso); torque humano residual, potência mecânica e energia elétrica do atuador; CSV, relatório .md, PNG, registro e reexecução no projeto.
