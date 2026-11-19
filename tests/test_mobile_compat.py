@@ -82,3 +82,15 @@ def test_limb3d_js_matches_python_segments():
             ja, jb = p["l"]["segs"][name]
             assert np.allclose(a, ja, atol=1e-9) and np.allclose(b, jb, atol=1e-9), (p["angles"], name)
         assert np.allclose(m.total_com(), p["l"]["com"], atol=1e-9)
+
+
+def test_flatten_metrics_js_matches_python(pm):
+    from infrastructure.database.history import flatten_metrics
+    js = json.loads((DATA.parent / "mobile_metrics.json").read_text(encoding="utf-8"))
+    assert len(js) == len(pm.data["experiments"])
+    for item, exp in zip(js, pm.data["experiments"]):
+        assert item["id"] == exp["id"]
+        py = flatten_metrics(exp["summary"])
+        assert set(py) == set(item["m"]) and len(py) >= 5
+        for k, v in py.items():
+            assert item["m"][k] == pytest.approx(v, rel=1e-12, abs=1e-15), k

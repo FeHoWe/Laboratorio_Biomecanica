@@ -194,3 +194,28 @@ def test_exo001_gui_flow(win, tmp_path, monkeypatch):
     win.tree.setCurrentItem(win.tree.findItems("EXO-001 #1", __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.MatchRecursive)[0])
     win.rerun_selected()
     assert (win.last_result["A"]["tau_human"] == before).all()
+
+
+def test_history_dialog_and_action(win, tmp_path, monkeypatch):
+    from interface.dialogs.bio001_dialog import Bio001Dialog
+    from interface.dialogs.history_dialog import HistoryDialog
+    monkeypatch.setattr(Bio001Dialog, "exec", lambda self: True)
+    assert not win.act_history.isEnabled()
+    win.manager.create(tmp_path / "p", "P")
+    assert win.act_history.isEnabled()
+    win.new_bio001()
+    win.new_bio001()
+    win.manager.save()
+    dlg = HistoryDialog(win.manager.history())
+    assert dlg.table.rowCount() == 2 and "2 experimento" in dlg.count.text()
+    dlg.metric_box.setCurrentIndex(1)
+    assert dlg.table.item(0, 4).text() != "—"
+    got = []
+    dlg.open_requested.connect(got.append)
+    dlg.table.setCurrentCell(1, 0)
+    dlg._open_current()
+    assert got == [dlg.table.item(1, 0).text()]
+    win._select_experiment_by_id(got[0])
+    assert win._selected_experiment()["id"] == got[0]
+    monkeypatch.setattr(HistoryDialog, "exec", lambda self: 0)
+    win.show_history()

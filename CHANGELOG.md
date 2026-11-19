@@ -1,4 +1,9 @@
 # Changelog
+## 0.10.0 — Histórico de experimentos em SQLite
+- `history.db` na pasta do projeto: índice derivado do project.json (reconstruído a cada criar/abrir/salvar; pode ser apagado; banco corrompido não impede abrir o projeto — só gera aviso). project.json continua sendo a fonte da verdade; "Salvar como" não copia o índice antigo.
+- Consulta por tipo e ordenação por qualquer métrica numérica do resumo (listas viram `chave[i]`). Menu Pesquisa → Histórico de experimentos (Ctrl+H); duplo clique seleciona o experimento na árvore.
+- Mobile: aba Histórico (mesma consulta sobre o project.json, em JS; o celular não usa SQLite). A achatagem de métricas do JS coincide com a do Python.
+- 113 testes. Não verificado: desempenho com milhares de experimentos; Windows.
 ## 0.9.0 — Vista 3D no celular
 - Aba "3D" no celular: render 3D por software (canvas, sem biblioteca externa) do mesmo membro inferior: câmera orbitável (arrastar), zoom/deslocar (dois dedos ou roda do mouse), grade, eixos, CM com projeção no solo, sliders de pose com limites, seleção de segmento por toque (mostra comprimento, massa, CM e fonte).
 - A geometria 3D do celular coincide com a do Python (4 poses, tolerância 1e-9) e é testada com jsdom (picking, câmera, sincronia dos sliders).

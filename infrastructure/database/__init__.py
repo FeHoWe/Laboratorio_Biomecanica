@@ -1,1 +1,1 @@
-"""Planejado - Fase 5 (SQLite)."""
+"""Banco SQLite (índice de histórico de experimentos). O project.json continua sendo a fonte da verdade."""

@@ -1,11 +1,11 @@
 {
   "format": "nexus-biomechanics-project",
   "schema_version": 1,
-  "id": "9a4c9596-a339-4598-bc95-84c456a4755b",
+  "id": "ef86428b-d559-4885-837f-bf671ebb3106",
   "name": "Teste mobile",
   "description": "",
-  "created": "2026-11-19T16:39:09+00:00",
-  "modified": "2026-11-19T16:39:09+00:00",
+  "created": "2026-11-19T16:44:57+00:00",
+  "modified": "2026-11-19T16:44:58+00:00",
   "models": [
     {
       "name": "Membro inferior simplificado (DEMONSTRATIVO)",
@@ -90,7 +90,7 @@
       "name": "BIO-001 #1",
       "id": "BIO-001-001",
       "type": "BIO-001",
-      "created": "2026-11-19T16:39:09+00:00",
+      "created": "2026-11-19T16:44:57+00:00",
       "params": {
         "duration_s": 1,
         "samples": 201,
@@ -190,7 +190,7 @@
       "name": "BIO-002 #1",
       "id": "BIO-002-001",
       "type": "BIO-002",
-      "created": "2026-11-19T16:39:09+00:00",
+      "created": "2026-11-19T16:44:57+00:00",
       "params": {
         "duration_s": 1,
         "samples": 151,
@@ -340,7 +340,7 @@
       "name": "EXO-001 #1",
       "id": "EXO-001-001",
       "type": "EXO-001",
-      "created": "2026-11-19T16:39:09+00:00",
+      "created": "2026-11-19T16:44:57+00:00",
       "params": {
         "model": {
           "name": "A — Membro inferior humano simplificado (3 seg.)",
@@ -429,7 +429,7 @@
       "name": "SIM-001 #1",
       "id": "SIM-001-001",
       "type": "SIM-001",
-      "created": "2026-11-19T16:39:09+00:00",
+      "created": "2026-11-19T16:44:58+00:00",
       "params": {
         "name": "Cadeia de 2 segmentos (DEMONSTRATIVO)",
         "l1": 0.43,

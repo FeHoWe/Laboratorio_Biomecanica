@@ -17,7 +17,8 @@ from typing import Optional
 
 from application import event_manager as ev
 from application.event_manager import EventManager
-from core.exceptions import ProjectError, ProjectIOError, ProjectValidationError
+from core.exceptions import NexusError, ProjectError, ProjectIOError, ProjectValidationError
+from infrastructure.database.history import DB_FILE, ExperimentHistory
 from core.validation.project_schema import FORMAT_ID, SCHEMA_VERSION, validate_project_dict
 
 log = logging.getLogger("nexus.project")
@@ -77,6 +78,7 @@ class ProjectManager:
         self._write(directory, data)
         self._set(data, directory, dirty=False)
         log.info("Projeto criado: %s (%s)", data["name"], directory)
+        self._sync_history()
         self.events.emit(ev.PROJECT_OPENED, project=self)
         return data
 
@@ -96,13 +98,26 @@ class ProjectManager:
             (directory / sub).mkdir(exist_ok=True)
         self._set(data, directory, dirty=False)
         log.info("Projeto aberto: %s (%s)", data["name"], directory)
+        self._sync_history()
         self.events.emit(ev.PROJECT_OPENED, project=self)
         return data
+
+    def history(self) -> ExperimentHistory:
+        self._require_open()
+        return ExperimentHistory(self.path / DB_FILE)  # type: ignore[operator]
+
+    def _sync_history(self) -> None:
+        """Atualiza o índice SQLite a partir do project.json (derivado: falha só gera aviso, não impede salvar/abrir)."""
+        try:
+            self.history().rebuild(self.data)  # type: ignore[arg-type]
+        except NexusError as exc:
+            log.warning("Histórico SQLite não atualizado: %s", exc)
 
     def save(self) -> None:
         data = self._require_open()
         data["modified"] = _now()
         self._write(self.path, data)  # type: ignore[arg-type]
+        self._sync_history()
         self.dirty = False
         log.info("Projeto salvo: %s", self.path)
         self.events.emit(ev.PROJECT_SAVED, project=self)
@@ -114,7 +129,7 @@ class ProjectManager:
             raise ProjectIOError(f"A pasta de destino já existe e não está vazia: {target}")
         try:
             shutil.copytree(self.path, target, dirs_exist_ok=True,
-                            ignore=shutil.ignore_patterns("*.tmp", "*.bak"))
+                            ignore=shutil.ignore_patterns("*.tmp", "*.bak", DB_FILE))
         except OSError as exc:
             raise ProjectIOError(f"Falha ao copiar projeto: {exc}") from exc
         self.path = target

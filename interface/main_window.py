@@ -178,6 +178,7 @@ class MainWindow(QMainWindow):
         self.act_bio = self._act(m, "Novo experimento &BIO-001…", self.new_bio001, "Ctrl+B", enabled=False)
         self.act_bio2 = self._act(m, "Novo experimento BIO-00&2 (3 segmentos)…", self.new_bio002, "Ctrl+Shift+B", enabled=False)
         self.act_exo = self._act(m, "Novo experimento EXO-001 (exoesqueleto)…", self.new_exo001, "Ctrl+Shift+E", enabled=False)
+        self.act_history = self._act(m, "Histórico de experimentos (SQLite)…", self.show_history, "Ctrl+H", enabled=False)
         self.act_rerun = self._act(m, "Reexecutar experimento selecionado", self.rerun_selected, enabled=False)
         m.addSeparator()
         self.act_csv = self._act(m, "Exportar CSV…", self.export_csv, enabled=False)
@@ -195,7 +196,7 @@ class MainWindow(QMainWindow):
     def _refresh(self, **_kw) -> None:
         pm = self.manager
         is_open = pm.is_open
-        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_bio2, self.act_exo, self.act_passive, self.act_limb):
+        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_bio2, self.act_exo, self.act_history, self.act_passive, self.act_limb):
             a.setEnabled(is_open)
         has = is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID, exo001.EXPERIMENT_ID)
         any_res = is_open and self.last_result is not None
@@ -389,6 +390,24 @@ class MainWindow(QMainWindow):
         self._guard(self.manager.add_experiment, bio002.EXPERIMENT_ID, params.to_dict(), bio002.summary_dict(res),
                     lambda path: bio002.export_csv(res, path))
         self._show_result(res)
+
+    def show_history(self) -> None:
+        from interface.dialogs.history_dialog import HistoryDialog
+        try:
+            dlg = HistoryDialog(self.manager.history(), self)
+        except NexusError as exc:
+            log.error("%s", exc)
+            QMessageBox.critical(self, APP_NAME, str(exc))
+            return
+        dlg.open_requested.connect(self._select_experiment_by_id)
+        self._history_dialog = dlg
+        dlg.exec()
+
+    def _select_experiment_by_id(self, exp_id: str) -> None:
+        for item in self.tree.findItems(next((e["name"] for e in self.manager.data["experiments"] if e["id"] == exp_id), ""),
+                                        Qt.MatchRecursive):
+            self.tree.setCurrentItem(item)
+            return
 
     def new_exo001(self) -> None:
         dlg = Exo001Dialog(parent=self)
