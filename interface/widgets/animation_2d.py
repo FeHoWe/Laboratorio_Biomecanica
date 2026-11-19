@@ -24,10 +24,12 @@ class _Canvas(QWidget):
             p.setPen(QColor(theme.TEXT2))
             p.drawText(self.rect(), Qt.AlignCenter, "Execute um experimento BIO-001 (menu Pesquisa)")
             return
-        reach = max(self.result["A"]["summary"]["total_length_m"], self.result["B"]["summary"]["total_length_m"])
+        keys = [k for k in ("A", "B") if k in self.result]
+        reach = max(self.result[k]["summary"]["total_length_m"] for k in keys)
         scale = min(self.width() / (4.6 * reach), self.height() / (2.4 * reach))
         base_y = self.height() * 0.12
-        for key, color, ox in (("A", theme.BLUE, -1.2 * reach), ("B", theme.CYAN, 1.2 * reach)):
+        offsets = {"A": -1.2 * reach, "B": 1.2 * reach} if len(keys) == 2 else {"A": 0.0}
+        for key, color, ox in [(k, {"A": theme.BLUE, "B": theme.CYAN}[k], offsets[k]) for k in keys]:
             r = self.result[key]
             def P(xy, ox=ox):
                 return QPointF(self.width() / 2 + (xy[0] + ox) * scale, base_y + (-xy[1]) * scale)

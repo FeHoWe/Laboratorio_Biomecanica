@@ -9,4 +9,6 @@ python main.py
 python -m pytest
 ```
 Logs e projetos recentes: `%USERPROFILE%\.nexus_biomechanics\` (altere com a variável NEXUS_HOME).
-Executável (.exe): PyInstaller ainda não configurado (pendente).
+## Gerar o executável (.exe)
+Com o venv ativo: `build_windows.bat` -> `dist\NEXUS_BIOMECHANICS\NEXUS_BIOMECHANICS.exe` (pasta portátil).
+Verificado em Linux (build e inicialização); o build no Windows ainda não foi testado por mim — se falhar, envie o log.

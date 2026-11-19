@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from core.exceptions import NexusError
+from core.exceptions import NexusError, SimulationCancelled
 from simulation.kinematics.planar import TwoLink
 
 G = 9.80665  # m/s², gravidade padrão
@@ -122,7 +122,7 @@ class PlanarArm:
         U = self.g * (self.s1.mass * c1[1] + self.s2.mass * c2[1])
         return float(T + U)
 
-    def simulate(self, q0, qd0, t_end: float, dt: float = 1e-3, tau_fn=None):
+    def simulate(self, q0, qd0, t_end: float, dt: float = 1e-3, tau_fn=None, progress=None, should_cancel=None):
         """Integra com RK4 (passo fixo). tau_fn(t, q, qd) -> torques [N.m]; None -> passivo."""
         if t_end <= 0 or dt <= 0:
             raise DynamicsError("t_end e dt devem ser > 0")
@@ -137,6 +137,11 @@ class PlanarArm:
         T, X = np.empty(n + 1), np.empty((n + 1, 4))
         T[0], X[0] = 0.0, x
         for i in range(n):
+            if i % 200 == 0:
+                if should_cancel is not None and should_cancel():
+                    raise SimulationCancelled("Simulação cancelada")
+                if progress is not None:
+                    progress(int(100 * i / n))
             t = T[i]
             k1 = f(t, x)
             k2 = f(t + dt / 2, x + dt / 2 * k1)

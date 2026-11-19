@@ -15,3 +15,7 @@ class ProjectIOError(ProjectError):
 
 class ProjectValidationError(ProjectError):
     """Arquivo de projeto inválido ou corrompido."""
+
+
+class SimulationCancelled(NexusError):
+    """Operação cancelada pelo usuário."""

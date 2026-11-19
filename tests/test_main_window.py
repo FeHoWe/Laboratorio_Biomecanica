@@ -31,7 +31,7 @@ def test_no_project_disables_actions(win):
 
 
 def test_planned_items_are_disabled(win):
-    for m in ("Modelo", "Simulação", "Biomecânica"):
+    for m in ("Modelo", "Biomecânica"):
         menu = next(a.menu() for a in win.menuBar().actions() if a.text() == m)
         assert all(not a.isEnabled() and "planejado" in a.text() for a in menu.actions())
 
@@ -112,3 +112,20 @@ def test_exports_from_gui(win, tmp_path, monkeypatch):
         monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, n=name: (str(tmp_path / n), ""))
         fn()
         assert (tmp_path / name).stat().st_size > 100
+
+
+def test_passive_sim_gui_with_worker(win, tmp_path, qtbot, monkeypatch):
+    from interface.dialogs.passive_dialog import PassiveDialog
+    from research.experiments import passive_sim
+    monkeypatch.setattr(PassiveDialog, "exec", lambda self: True)
+    assert not win.act_passive.isEnabled()
+    win.manager.create(tmp_path / "p", "P")
+    assert win.act_passive.isEnabled()
+    win.new_passive()
+    qtbot.waitUntil(lambda: win.last_result is not None, timeout=30000)
+    win._thread.wait()
+    assert win.last_result["id"] == "SIM-001"
+    assert win.manager.data["experiments"][0]["id"] == "SIM-001-001"
+    assert (tmp_path / "p" / "results" / "SIM-001-001.csv").is_file()
+    assert "Deriva" in win.results.toPlainText()
+    assert win.act_csv.isEnabled() and not win.act_pdf.isEnabled()

@@ -27,7 +27,10 @@ from interface.dialogs.bio001_dialog import Bio001Dialog
 from interface.widgets.animation_2d import Animation2D
 from interface.widgets.viewport_placeholder import ViewportPlaceholder
 from PySide6.QtCore import Qt as _Qt  # noqa: F401
-from research.experiments import bio001
+from research.experiments import bio001, passive_sim
+from infrastructure.workers.worker import TaskThread
+from interface.dialogs.passive_dialog import PassiveDialog
+from PySide6.QtWidgets import QProgressDialog
 
 log = logging.getLogger("nexus.ui")
 
@@ -113,6 +116,7 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self) -> None:
         mb = self.menuBar()
+        self.menus: dict = {}
         m = mb.addMenu("&Arquivo")
         self.act_new = self._act(m, "&Novo projeto…", self.new_project, QKeySequence.New)
         self.act_open = self._act(m, "&Abrir projeto…", self.open_project, QKeySequence.Open)
@@ -136,8 +140,14 @@ class MainWindow(QMainWindow):
 
         for title, items in PLANNED.items():
             menu = mb.addMenu(title)
+            self.menus[title] = menu
             for text, phase in items:
                 self._act(menu, f"{text} (planejado — {phase})", lambda: None, enabled=False)
+
+        sim = self.menus["Simulação"]
+        sim.clear()
+        self.act_passive = self._act(sim, "Dinâmica passiva SIM-001 (pêndulo duplo)…", self.new_passive, "Ctrl+Shift+P", enabled=False)
+        self._act(sim, "Integração MuJoCo (planejado — Fase 6)", lambda: None, enabled=False)
 
         m = mb.addMenu("A&nálise")
         self.act_compare = self._act(m, "Comparação A vs B (último BIO-001)", self.show_comparison, enabled=False)
@@ -150,7 +160,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         self.act_csv = self._act(m, "Exportar CSV…", self.export_csv, enabled=False)
         self.act_md = self._act(m, "Exportar relatório técnico (.md)…", self.export_report, enabled=False)
-        self._act(m, "Relatório PDF (planejado — Fase 5)", lambda: None, enabled=False)
+        self.act_pdf = self._act(m, "Exportar relatório PDF…", self.export_pdf_report, enabled=False)
 
         m = mb.addMenu("&Ferramentas")
         self._act(m, "Diagnóstico do ambiente", self.diagnostics)
@@ -163,10 +173,12 @@ class MainWindow(QMainWindow):
     def _refresh(self, **_kw) -> None:
         pm = self.manager
         is_open = pm.is_open
-        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio):
+        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_passive):
             a.setEnabled(is_open)
-        has = is_open and self.last_result is not None
-        for a in (self.act_csv, self.act_md, self.act_png, self.act_compare):
+        has = is_open and self.last_result is not None and self.last_result["id"] == bio001.EXPERIMENT_ID
+        any_res = is_open and self.last_result is not None
+        self.act_csv.setEnabled(any_res)
+        for a in (self.act_md, self.act_png, self.act_compare, self.act_pdf):
             a.setEnabled(has)
         self.act_rerun.setEnabled(is_open and self._selected_experiment() is not None)
         self.stack.setCurrentWidget(self.viewport if is_open else self.dashboard)
@@ -279,6 +291,9 @@ class MainWindow(QMainWindow):
 
     def rerun_selected(self) -> None:
         exp = self._selected_experiment()
+        if exp and exp.get("type") == passive_sim.EXPERIMENT_ID:
+            self.run_passive(passive_sim.PassiveParams.from_dict(exp["params"]), register=False)
+            return
         if exp:
             res = self._run_bio001(bio001.Bio001Params.from_dict(exp["params"]))
             if res:
@@ -325,7 +340,63 @@ class MainWindow(QMainWindow):
             log.info("Exportado: %s", path)
 
     def export_csv(self) -> None:
-        self._export("Exportar CSV", "CSV (*.csv)", lambda p: bio001.export_csv(self.last_result, p))
+        self._export("Exportar CSV", "CSV (*.csv)", lambda p: (passive_sim if self.last_result["id"] == passive_sim.EXPERIMENT_ID else bio001).export_csv(self.last_result, p))
+
+    def export_pdf_report(self) -> None:
+        from research.reports.pdf_report import export_pdf
+        self._export("Exportar relatório PDF", "PDF (*.pdf)", lambda p: export_pdf(self.last_result, p))
+
+    # ---- SIM-001 com worker ----
+    def new_passive(self) -> None:
+        dlg = PassiveDialog(parent=self)
+        if not dlg.exec():
+            return
+        params = dlg.params()
+        self.run_passive(params, register=True)
+
+    def run_passive(self, params, register: bool) -> None:
+        self._progress = QProgressDialog("Integrando dinâmica (RK4)…", "Cancelar", 0, 100, self)
+        self._progress.setWindowTitle("SIM-001")
+        self._progress.setMinimumDuration(0)
+        self._progress.setAutoClose(False)
+        self._progress.setAutoReset(False)
+        self._thread = TaskThread(lambda prog, canc: passive_sim.run(params, prog, canc), self)
+        self._progress.canceled.connect(self._thread.cancel)
+        self._thread.progress.connect(self._progress.setValue)
+        self._thread.succeeded.connect(lambda res: self._passive_done(res, params, register))
+        self._thread.failed.connect(self._passive_failed)
+        self._thread.cancelled.connect(lambda: (self._progress.close(), log.info("SIM-001 cancelada")))
+        log.info("SIM-001 iniciada (thread separada)")
+        self._thread.start()
+
+    def _passive_failed(self, msg: str) -> None:
+        self._progress.close()
+        log.error("SIM-001 falhou: %s", msg)
+        QMessageBox.critical(self, APP_NAME, msg)
+
+    def _passive_done(self, res: dict, params, register: bool) -> None:
+        self._progress.close()
+        if register:
+            self._guard(self.manager.add_experiment, passive_sim.EXPERIMENT_ID, params.to_dict(),
+                        passive_sim.summary_dict(res), lambda path: passive_sim.export_csv(res, path))
+        self._show_passive(res)
+
+    def _show_passive(self, res: dict) -> None:
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+        from visualization.charts.bio001_plots import make_passive_figure
+        self.last_result = res
+        self.anim.set_result(res)
+        while self.plot_layout.count():
+            w = self.plot_layout.takeAt(0).widget()
+            if w:
+                w.deleteLater()
+        self.plot_layout.addWidget(FigureCanvasQTAgg(make_passive_figure(res)))
+        sm = res["A"]["summary"]
+        self.results.setPlainText(f"SIM-001 — dinâmica passiva (DEMONSTRATIVO)\nPassos: {sm['steps']}\n"
+                                  f"E inicial: {sm['energy_initial_j']:.6g} J  E final: {sm['energy_final_j']:.6g} J\n"
+                                  f"Deriva relativa máxima: {sm['max_rel_energy_drift']:.3e}\n\n" + "\n".join(res["messages"]))
+        self.viewport.setCurrentWidget(self.anim)
+        self._refresh()
 
     def export_report(self) -> None:
         def w(p):
