@@ -8,7 +8,7 @@ import pytest
 
 from application.project_manager import ProjectManager
 from biomechanics.human_model.lower_limb import LowerLimbModel
-from research.experiments import bio001, passive_sim
+from research.experiments import bio001, bio002, passive_sim
 
 DATA = Path(__file__).parent / "data" / "mobile_project.json"
 
@@ -24,7 +24,7 @@ def pm(tmp_path):
 
 
 def test_mobile_project_opens_and_validates(pm):
-    assert pm.name == "Teste mobile" and len(pm.data["models"]) == 1 and len(pm.data["experiments"]) == 2
+    assert pm.name == "Teste mobile" and len(pm.data["models"]) == 1 and len(pm.data["experiments"]) == 3
 
 
 def test_model_from_mobile_loads_and_matches_pose(pm):
@@ -48,3 +48,11 @@ def test_sim001_reproduces_mobile_summary(pm):
     assert a["steps"] == b["steps"]
     assert a["energy_initial_j"] == pytest.approx(b["energy_initial_j"], rel=1e-9)
     assert a["energy_final_j"] == pytest.approx(b["energy_final_j"], rel=1e-9)
+
+
+def test_bio002_reproduces_mobile_summary(pm):
+    exp = next(e for e in pm.data["experiments"] if e["type"] == "BIO-002")
+    res = bio002.run(bio002.Bio002Params.from_dict(exp["params"]))
+    for key in ("A", "B"):
+        for field, vals in exp["summary"][key].items():
+            assert np.allclose(res[key]["summary"][field], vals, rtol=1e-6, atol=1e-8), (key, field)

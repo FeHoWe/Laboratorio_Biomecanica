@@ -148,3 +148,25 @@ def test_limb_model_flow(win, tmp_path):
     assert win.limb.angles_deg["knee"] == 60 and win.pose.sliders["knee"].value() == 60
     win.pose.reset()
     assert win.limb.angles_deg["knee"] == 0
+
+
+def test_bio002_gui_flow_and_rerun_and_exports(win, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QFileDialog
+    from interface.dialogs.bio002_dialog import Bio002Dialog
+    monkeypatch.setattr(Bio002Dialog, "exec", lambda self: True)
+    win.manager.create(tmp_path / "p", "P")
+    assert win.act_bio2.isEnabled()
+    win.new_bio002()
+    assert win.last_result["id"] == "BIO-002" and win.manager.data["experiments"][0]["id"] == "BIO-002-001"
+    assert (tmp_path / "p" / "results" / "BIO-002-001.csv").is_file()
+    assert win.anim.canvas.result["A"]["points"].shape[1] == 4  # animação com 3 segmentos
+    assert not win.act_pdf.isEnabled() and win.act_md.isEnabled() and win.act_png.isEnabled()
+    for name, fn in (("b.csv", win.export_csv), ("b.md", win.export_report), ("b.png", win.export_png)):
+        monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, n=name: (str(tmp_path / n), ""))
+        fn()
+        assert (tmp_path / name).stat().st_size > 100
+    assert "jarrete" in (tmp_path / "b.md").read_text(encoding="utf-8")
+    win.tree.setCurrentItem(win.tree.topLevelItem(0).child(1).child(0))
+    before = win.last_result["B"]["tau"].copy()
+    win.rerun_selected()
+    assert (win.last_result["B"]["tau"] == before).all()

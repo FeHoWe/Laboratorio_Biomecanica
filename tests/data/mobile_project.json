@@ -1,11 +1,11 @@
 {
   "format": "nexus-biomechanics-project",
   "schema_version": 1,
-  "id": "5aa21597-9533-46d1-81ad-46452bbfbc63",
+  "id": "b6c3ba2c-f844-4a6d-b6e9-2cad0c6e9484",
   "name": "Teste mobile",
   "description": "",
-  "created": "2026-11-19T14:17:44+00:00",
-  "modified": "2026-11-19T14:17:44+00:00",
+  "created": "2026-11-19T14:21:41+00:00",
+  "modified": "2026-11-19T14:21:42+00:00",
   "models": [
     {
       "name": "Membro inferior simplificado (DEMONSTRATIVO)",
@@ -90,7 +90,7 @@
       "name": "BIO-001 #1",
       "id": "BIO-001-001",
       "type": "BIO-001",
-      "created": "2026-11-19T14:17:44+00:00",
+      "created": "2026-11-19T14:21:41+00:00",
       "params": {
         "duration_s": 1,
         "samples": 201,
@@ -187,10 +187,160 @@
       "results_file": null
     },
     {
+      "name": "BIO-002 #1",
+      "id": "BIO-002-001",
+      "type": "BIO-002",
+      "created": "2026-11-19T14:21:41+00:00",
+      "params": {
+        "duration_s": 1,
+        "samples": 151,
+        "model_a": {
+          "name": "A — Membro inferior humano simplificado (3 seg.)",
+          "lengths_m": [
+            0.43,
+            0.43,
+            0.24
+          ],
+          "masses_kg": [
+            7,
+            3.2,
+            1
+          ],
+          "com_fracs": [
+            0.43,
+            0.43,
+            0.45
+          ],
+          "q_start_deg": [
+            -90,
+            0,
+            90
+          ],
+          "q_end_deg": [
+            -60,
+            60,
+            80
+          ],
+          "joint_names": [
+            "quadril",
+            "joelho",
+            "tornozelo"
+          ],
+          "tip_force_n": [
+            0,
+            0
+          ],
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        },
+        "model_b": {
+          "name": "B — Membro posterior animal simplificado (3 seg., jarrete)",
+          "lengths_m": [
+            0.3,
+            0.3,
+            0.28
+          ],
+          "masses_kg": [
+            2,
+            0.8,
+            0.5
+          ],
+          "com_fracs": [
+            0.45,
+            0.42,
+            0.45
+          ],
+          "q_start_deg": [
+            -90,
+            0,
+            0
+          ],
+          "q_end_deg": [
+            -55,
+            -60,
+            40
+          ],
+          "joint_names": [
+            "quadril",
+            "joelho",
+            "jarrete"
+          ],
+          "tip_force_n": [
+            0,
+            0
+          ],
+          "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+        }
+      },
+      "summary": {
+        "A": {
+          "peak_abs_torque_nm": [
+            25.40495061486388,
+            10.203172117363877,
+            1.399086171820477
+          ],
+          "peak_abs_ang_vel_rad_s": [
+            0.9817477042468105,
+            1.9634954084936205,
+            0.32724923474893686
+          ],
+          "peak_abs_power_w": [
+            14.182800320083391,
+            16.21213394277042,
+            0.4327523898640161
+          ],
+          "work_j": [
+            7.501237001987342,
+            7.815147443657505,
+            -0.18079420094352291
+          ],
+          "total_mass_kg": 11.2,
+          "total_length_m": 1.1,
+          "peak_torque_normalized": [
+            0.21027467558344387,
+            0.08445081194708022,
+            0.011580120558105226
+          ]
+        },
+        "B": {
+          "peak_abs_torque_nm": [
+            2.8328802083568956,
+            0.904610387397214,
+            0.15990331068524216
+          ],
+          "peak_abs_ang_vel_rad_s": [
+            1.1453723216212788,
+            1.9634954084936205,
+            1.3089969389957472
+          ],
+          "peak_abs_power_w": [
+            1.791049692433599,
+            1.314768436058691,
+            0.11008205268170806
+          ],
+          "work_j": [
+            0.8922773523605971,
+            0.4745785246124074,
+            0.05515083958782449
+          ],
+          "total_mass_kg": 3.3,
+          "total_length_m": 0.88,
+          "peak_torque_normalized": [
+            0.09947430708973203,
+            0.03176466523612892,
+            0.005614875978463782
+          ]
+        },
+        "messages": [
+          "Parâmetros demonstrativos: resultados ilustram o método, não anatomia real."
+        ]
+      },
+      "results_file": null
+    },
+    {
       "name": "SIM-001 #1",
       "id": "SIM-001-001",
       "type": "SIM-001",
-      "created": "2026-11-19T14:17:44+00:00",
+      "created": "2026-11-19T14:21:42+00:00",
       "params": {
         "name": "Cadeia de 2 segmentos (DEMONSTRATIVO)",
         "l1": 0.43,

@@ -38,13 +38,16 @@ class _Canvas(QWidget):
             pts = [P(r["tip_xy"][i]) for i in range(0, self.frame + 1, 2)]
             for a, b in zip(pts[:-1], pts[1:]):
                 p.drawLine(a, b)
-            o, j, t = P((0, 0)), P(r["joint_xy"][self.frame]), P(r["tip_xy"][self.frame])
+            if "points" in r:
+                chain = [P(xy) for xy in r["points"][self.frame]]
+            else:
+                chain = [P((0, 0)), P(r["joint_xy"][self.frame]), P(r["tip_xy"][self.frame])]
             p.setPen(QPen(QColor(color), 5, Qt.SolidLine, Qt.RoundCap))
-            p.drawLine(o, j)
-            p.drawLine(j, t)
+            for a_, b_ in zip(chain[:-1], chain[1:]):
+                p.drawLine(a_, b_)
             p.setPen(Qt.NoPen)
             p.setBrush(QColor(theme.TEXT))
-            for pt in (o, j, t):
+            for pt in chain:
                 p.drawEllipse(pt, 4, 4)
             p.setPen(QColor(color))
             p.drawText(int(P((0, 0)).x()) - 90, int(self.height() - 12), r["name"][:34])

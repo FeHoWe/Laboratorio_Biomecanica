@@ -1,4 +1,9 @@
 # Changelog
+## 0.6.0 — BIO-002: comparação com 3 segmentos (Fase 4)
+- Dinâmica de Lagrange para cadeia planar de N segmentos (validada contra o modelo de 2 segmentos em 25 poses aleatórias, e contra soluções analíticas e conservação de energia para N=3).
+- BIO-002: humano (coxa, perna, pé) vs. animal (fêmur, tíbia, metatarso/jarrete): animação, gráficos por junta, CSV, relatório .md, registro e reexecução no projeto.
+- Mobile: aba BIO-002 (mesmos resultados do Python, conferido numericamente); projetos do celular com BIO-002 reproduzem no desktop.
+- 94 testes. Pendente: PDF do BIO-002, ajuste fino de parâmetros com fontes científicas, MuJoCo/OpenSim, IA, Windows.
 ## 0.5.0 — Viewport 3D e modelo de membro inferior (Fase 2)
 - Modelo de membro inferior (pelve, fêmur, tíbia, fíbula, pé; quadril/joelho/tornozelo) com limites articulares configuráveis, cinemática direta 4x4 e CM. Parâmetros DEMONSTRATIVOS.
 - Viewport 3D real (VTK/PyVista via pyvistaqt): câmera (rotação/zoom/pan), eixos, grade, CM e projeção no solo, painel de Pose com sliders. Modelo salvo no projeto.

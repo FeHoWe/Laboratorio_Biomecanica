@@ -29,7 +29,8 @@ from interface.widgets.viewport3d import Viewport3D
 from interface.panels.pose_panel import PosePanel
 from biomechanics.human_model.lower_limb import LowerLimbModel, JointLimitError
 from PySide6.QtCore import Qt as _Qt  # noqa: F401
-from research.experiments import bio001, passive_sim
+from research.experiments import bio001, bio002, passive_sim
+from interface.dialogs.bio002_dialog import Bio002Dialog
 from infrastructure.workers.worker import TaskThread
 from interface.dialogs.passive_dialog import PassiveDialog
 from PySide6.QtWidgets import QProgressDialog
@@ -77,7 +78,7 @@ class MainWindow(QMainWindow):
         self.plot_layout.addWidget(QLabel("Execute BIO-001 (menu Pesquisa) para ver os gráficos."))
         self.viewport.addTab(self.viewport3d, "Viewport 3D")
         self.viewport.addTab(self.anim, "Animação 2D")
-        self.viewport.addTab(self.plot_host, "Gráficos BIO-001")
+        self.viewport.addTab(self.plot_host, "Gráficos")
         self.last_result: dict | None = None
         self.stack.addWidget(self.dashboard)
         self.stack.addWidget(self.viewport)
@@ -173,6 +174,7 @@ class MainWindow(QMainWindow):
 
         m = mb.addMenu("&Pesquisa")
         self.act_bio = self._act(m, "Novo experimento &BIO-001…", self.new_bio001, "Ctrl+B", enabled=False)
+        self.act_bio2 = self._act(m, "Novo experimento BIO-00&2 (3 segmentos)…", self.new_bio002, "Ctrl+Shift+B", enabled=False)
         self.act_rerun = self._act(m, "Reexecutar experimento selecionado", self.rerun_selected, enabled=False)
         m.addSeparator()
         self.act_csv = self._act(m, "Exportar CSV…", self.export_csv, enabled=False)
@@ -190,13 +192,14 @@ class MainWindow(QMainWindow):
     def _refresh(self, **_kw) -> None:
         pm = self.manager
         is_open = pm.is_open
-        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_passive, self.act_limb):
+        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_bio2, self.act_passive, self.act_limb):
             a.setEnabled(is_open)
-        has = is_open and self.last_result is not None and self.last_result["id"] == bio001.EXPERIMENT_ID
+        has = is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID)
         any_res = is_open and self.last_result is not None
         self.act_csv.setEnabled(any_res)
-        for a in (self.act_md, self.act_png, self.act_compare, self.act_pdf):
+        for a in (self.act_md, self.act_png, self.act_compare):
             a.setEnabled(has)
+        self.act_pdf.setEnabled(is_open and self.last_result is not None and self.last_result["id"] == bio001.EXPERIMENT_ID)
         self.act_rerun.setEnabled(is_open and self._selected_experiment() is not None)
         self.stack.setCurrentWidget(self.viewport if is_open else self.dashboard)
         self.tree.populate(pm.data)
@@ -366,8 +369,30 @@ class MainWindow(QMainWindow):
                     bio001.summary_dict(res), lambda path: bio001.export_csv(res, path))
         self._show_result(res)
 
+    def new_bio002(self) -> None:
+        dlg = Bio002Dialog(parent=self)
+        if not dlg.exec():
+            return
+        params = dlg.params()
+        try:
+            res = bio002.run(params)
+        except NexusError as exc:
+            log.error("%s", exc)
+            QMessageBox.critical(self, APP_NAME, str(exc))
+            return
+        for m in res["messages"]:
+            log.warning(m) if m.startswith("AVISO") else log.info(m)
+        self._guard(self.manager.add_experiment, bio002.EXPERIMENT_ID, params.to_dict(), bio002.summary_dict(res),
+                    lambda path: bio002.export_csv(res, path))
+        self._show_result(res)
+
     def rerun_selected(self) -> None:
         exp = self._selected_experiment()
+        if exp and exp.get("type") == bio002.EXPERIMENT_ID:
+            res = bio002.run(bio002.Bio002Params.from_dict(exp["params"]))
+            self._show_result(res)
+            log.info("Reexecução de %s concluída (determinística)", exp["id"])
+            return
         if exp and exp.get("type") == passive_sim.EXPERIMENT_ID:
             self.run_passive(passive_sim.PassiveParams.from_dict(exp["params"]), register=False)
             return
@@ -390,7 +415,8 @@ class MainWindow(QMainWindow):
 
     def _show_result(self, res: dict) -> None:
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-        from visualization.charts.bio001_plots import make_figure
+        from visualization.charts.bio001_plots import make_figure, make_figure_n
+        make_figure = make_figure_n if res["A"]["q"].shape[1] > 2 else make_figure
         self.last_result = res
         self.anim.set_result(res)
         while self.plot_layout.count():
@@ -398,9 +424,9 @@ class MainWindow(QMainWindow):
             if w:
                 w.deleteLater()
         self.plot_layout.addWidget(FigureCanvasQTAgg(make_figure(res)))
-        lines = [f"BIO-001 — resultados (parâmetros DEMONSTRATIVOS)", ""]
+        lines = [f"{res['id']} — resultados (parâmetros DEMONSTRATIVOS)", ""]
         for c in res["comparison"].values():
-            lines.append(f"{c['label']}\n   A: {c['A'][0]:.4g} / {c['A'][1]:.4g}   B: {c['B'][0]:.4g} / {c['B'][1]:.4g}"
+            lines.append(f"{c['label']}\n   A: {' / '.join(f'{v:.4g}' for v in c['A'])}   B: {' / '.join(f'{v:.4g}' for v in c['B'])}"
                          f"   (B/A: {', '.join('—' if r is None else f'{r:.3g}' for r in c['ratio_B_over_A'])})")
         lines += [""] + res["messages"]
         self.results.setPlainText("\n".join(lines))
@@ -417,7 +443,7 @@ class MainWindow(QMainWindow):
             log.info("Exportado: %s", path)
 
     def export_csv(self) -> None:
-        self._export("Exportar CSV", "CSV (*.csv)", lambda p: (passive_sim if self.last_result["id"] == passive_sim.EXPERIMENT_ID else bio001).export_csv(self.last_result, p))
+        self._export("Exportar CSV", "CSV (*.csv)", lambda p: self._module().export_csv(self.last_result, p))
 
     def export_pdf_report(self) -> None:
         from research.reports.pdf_report import export_pdf
@@ -475,9 +501,13 @@ class MainWindow(QMainWindow):
         self.viewport.setCurrentWidget(self.anim)
         self._refresh()
 
+    def _module(self):
+        return {bio001.EXPERIMENT_ID: bio001, bio002.EXPERIMENT_ID: bio002,
+                passive_sim.EXPERIMENT_ID: passive_sim}[self.last_result["id"]]
+
     def export_report(self) -> None:
         def w(p):
-            Path(p).write_text(bio001.report_markdown(self.last_result), encoding="utf-8")
+            Path(p).write_text(self._module().report_markdown(self.last_result), encoding="utf-8")
         self._export("Exportar relatório", "Markdown (*.md)", w)
 
     def export_png(self) -> None:
