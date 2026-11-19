@@ -60,6 +60,12 @@ class Viewport3D(QWidget):
         if self.available and model is not None:
             self.scene.set_model(model)
 
+    def show_mesh(self, vertices, faces) -> bool:
+        if not self.available:
+            return False
+        self.scene.show_mesh(vertices, faces)
+        return True
+
     def refresh(self) -> None:
         if self.available:
             self.scene.update()

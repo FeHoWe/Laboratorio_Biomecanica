@@ -1,4 +1,9 @@
 # Changelog
+## 1.0.0-rc1 — Release candidate (pulou 0.11–0.99 a pedido)
+- Importação de STL (desktop e celular) com validação e estatísticas; malha apenas visual.
+- Arquitetura do módulo de IA (sem provedor; rótulo obrigatório "gerado por IA").
+- ACCEPTANCE.md: estado real por módulo. Versão marcada rc1 porque Windows, fontes científicas e MuJoCo/OpenSim não estão verificados/implementados.
+- 127 testes.
 ## 0.10.0 — Histórico de experimentos em SQLite
 - `history.db` na pasta do projeto: índice derivado do project.json (reconstruído a cada criar/abrir/salvar; pode ser apagado; banco corrompido não impede abrir o projeto — só gera aviso). project.json continua sendo a fonte da verdade; "Salvar como" não copia o índice antigo.
 - Consulta por tipo e ordenação por qualquer métrica numérica do resumo (listas viram `chave[i]`). Menu Pesquisa → Histórico de experimentos (Ctrl+H); duplo clique seleciona o experimento na árvore.

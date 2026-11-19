@@ -18,6 +18,7 @@ from typing import Optional
 from application import event_manager as ev
 from application.event_manager import EventManager
 from core.exceptions import NexusError, ProjectError, ProjectIOError, ProjectValidationError
+from core.geometry.stl import load_stl
 from infrastructure.database.history import DB_FILE, ExperimentHistory
 from core.validation.project_schema import FORMAT_ID, SCHEMA_VERSION, validate_project_dict
 
@@ -184,6 +185,37 @@ class ProjectManager:
         log.info("Modelo adicionado: %s", model["name"])
         self.events.emit(ev.PROJECT_CHANGED, project=self)
         return len(data["models"]) - 1
+
+    STL_UNITS = {"mm": 0.001, "cm": 0.01, "m": 1.0, "in": 0.0254}
+
+    def import_stl(self, src: Path | str, units: str = "mm", name: Optional[str] = None) -> int:
+        """Importa uma malha STL (cópia dentro de models/). Geometria só visual: não entra na dinâmica."""
+        self._require_open()
+        if units not in self.STL_UNITS:
+            raise ProjectValidationError(f"Unidade inválida para STL: {units} (use {', '.join(self.STL_UNITS)})")
+        src = Path(src)
+        mesh = load_stl(src)  # levanta StlError (NexusError) se inválido
+        scale = self.STL_UNITS[units]
+        base = "".join(c if c.isalnum() or c in "-_" else "_" for c in src.stem) or "malha"
+        rel, n = f"models/{base}.stl", 1
+        while (self.path / rel).exists():  # type: ignore[operator]
+            n += 1
+            rel = f"models/{base}_{n}.stl"
+        target = self.path / rel  # type: ignore[operator]
+        tmp = target.with_suffix(".stl.tmp")
+        try:
+            shutil.copyfile(src, tmp)
+            os.replace(tmp, target)
+        except OSError as exc:
+            raise ProjectIOError(f"Falha ao copiar STL: {exc}") from exc
+        model = {"name": name or src.stem, "type": "stl_mesh", "file": rel, "units": units, "scale_to_m": scale,
+                 "stats_m": mesh.scaled(scale).stats(),
+                 "source": "importado pelo usuário; geometria apenas visual (não usada nos cálculos)"}
+        try:
+            return self.add_model(model)
+        except NexusError:
+            target.unlink(missing_ok=True)
+            raise
 
     def update_model(self, index: int, model: dict) -> None:
         data = self._require_open()

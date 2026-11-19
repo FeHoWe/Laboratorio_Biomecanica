@@ -33,7 +33,7 @@ def test_no_project_disables_actions(win):
 def test_planned_items_are_disabled(win):
     for m in ("Modelo", "Biomecânica"):
         menu = next(a.menu() for a in win.menuBar().actions() if a.text() == m)
-        assert all(not a.isEnabled() and "planejado" in a.text() for a in menu.actions() if a is not win.act_limb)
+        assert all(not a.isEnabled() and "planejado" in a.text() for a in menu.actions() if a is not win.act_limb and a is not win.act_stl)
 
 
 def test_open_project_updates_ui(win, tmp_path):
@@ -219,3 +219,41 @@ def test_history_dialog_and_action(win, tmp_path, monkeypatch):
     assert win._selected_experiment()["id"] == got[0]
     monkeypatch.setattr(HistoryDialog, "exec", lambda self: 0)
     win.show_history()
+
+
+def test_stl_import_gui_flow(win, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QFileDialog, QInputDialog, QMessageBox
+    from core.geometry.stl import write_binary_stl
+    from tests.test_stl import cube
+    src = tmp_path / "c.stl"
+    write_binary_stl(cube(50.0), src)
+    assert not win.act_stl.isEnabled()
+    win.manager.create(tmp_path / "p", "P")
+    assert win.act_stl.isEnabled()
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **k: (str(src), ""))
+    monkeypatch.setattr(QInputDialog, "getItem", lambda *a, **k: ("mm", True))
+    win.import_stl()
+    assert win.manager.data["models"][0]["type"] == "stl_mesh"
+    # arquivo STL ausente: erro tratado, sem exceção
+    shown = []
+    monkeypatch.setattr(QMessageBox, "critical", lambda *a, **k: shown.append(a[2]))
+    (tmp_path / "p" / win.manager.data["models"][0]["file"]).unlink()
+    win.show_mesh_model(win.manager.data["models"][0])
+    assert shown and "Não foi possível carregar" in shown[0]
+
+
+def test_ai_action_disabled_without_provider_and_runs_with_fake(win, tmp_path, monkeypatch):
+    from interface.dialogs.bio001_dialog import Bio001Dialog
+    monkeypatch.setattr(Bio001Dialog, "exec", lambda self: True)
+    from tests.test_ai_architecture import Fake
+    win.manager.create(tmp_path / "p", "P")
+    win.new_bio001()
+    assert not win.act_ai.isEnabled()  # sem provedor: nada é gerado
+    win.run_ai_analysis()
+    assert "Gerado por IA" not in win.results.toPlainText()
+    win.ai_registry.register(Fake())
+    win._refresh()
+    assert win.act_ai.isEnabled()
+    win.run_ai_analysis()
+    txt = win.results.toPlainText()
+    assert "Gerado por IA" in txt and "fake-1" in txt and "Limitações" in txt

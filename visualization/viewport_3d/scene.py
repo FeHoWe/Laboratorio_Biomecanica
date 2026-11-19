@@ -19,6 +19,14 @@ def cylinder_between(p0, p1, radius: float) -> pv.PolyData:
     return pv.Cylinder(center=(p0 + p1) / 2, direction=d / h, radius=radius, height=h, resolution=28)
 
 
+def mesh_polydata(vertices, faces) -> pv.PolyData:
+    """PolyData a partir de vértices (V,3) e faces triangulares (F,3)."""
+    v = np.asarray(vertices, float)
+    f = np.asarray(faces, np.int64)
+    cells = np.hstack([np.full((len(f), 1), 3, np.int64), f]).ravel()
+    return pv.PolyData(v, cells)
+
+
 class LimbScene:
     def __init__(self, plotter) -> None:
         self.plotter = plotter
@@ -68,6 +76,18 @@ class LimbScene:
         if reset_camera:
             p.camera_position = [(2.2, 1.0, 2.6), (0.1, 0.5, 0.0), (0, 1, 0)]
         p.render()
+
+    def show_mesh(self, vertices, faces) -> None:
+        """Mostra a malha importada (em metros), substituindo a anterior; reajusta a câmera aos limites dela."""
+        if not self._static:
+            self._build_static()
+        mesh = mesh_polydata(vertices, faces)
+        self.plotter.add_mesh(mesh, color="#9fb3cc", smooth_shading=False, show_edges=False, name="imported_mesh", pickable=False)
+        self.plotter.reset_camera()
+        self.plotter.render()
+
+    def clear_mesh(self) -> None:
+        self.plotter.remove_actor("imported_mesh")
 
     def select(self, name: str | None) -> None:
         self.selected = name if name in COLORS else None

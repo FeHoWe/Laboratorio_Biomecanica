@@ -32,6 +32,7 @@ from PySide6.QtCore import Qt as _Qt  # noqa: F401
 from research.experiments import bio001, bio002, passive_sim
 from interface.dialogs.bio002_dialog import Bio002Dialog
 from interface.dialogs.exo001_dialog import Exo001Dialog
+from artificial_intelligence.base import AnalyzerRegistry, AiAnalysisError, request_from_result
 from exoskeleton.analysis import assist as exo001
 from infrastructure.workers.worker import TaskThread
 from interface.dialogs.passive_dialog import PassiveDialog
@@ -40,7 +41,7 @@ from PySide6.QtWidgets import QProgressDialog
 log = logging.getLogger("nexus.ui")
 
 PLANNED = {
-    "Modelo": [("Importar STL", "Fase 2"), ("Importar STEP — integração CAD futura", "futuro")],
+    "Modelo": [("Importar STEP — integração CAD futura", "futuro")],
     "Biomecânica": [("Modelo de membro inferior com 3 segmentos", "Fase 4"), ("Músculos / OpenSim", "Fase 6")],
     "Simulação": [("Simulação dinâmica interativa", "Fase 4"), ("Integração MuJoCo", "Fase 6")],
 }
@@ -51,6 +52,7 @@ class MainWindow(QMainWindow):
     def __init__(self, manager: ProjectManager, recent: RecentProjects, log_file: Path | None = None) -> None:
         super().__init__()
         self.manager, self.recent, self.log_file = manager, recent, log_file
+        self.ai_registry = AnalyzerRegistry()  # vazio: nenhum provedor é incluído
         self.resize(1360, 820)
         self._build_central()
         self._build_docks()
@@ -164,6 +166,10 @@ class MainWindow(QMainWindow):
         self.act_limb.triggered.connect(self.new_limb)
         self.act_limb.setEnabled(False)
         mod.insertAction(mod.actions()[0], self.act_limb)
+        self.act_stl = QAction("Importar malha STL…", self)
+        self.act_stl.triggered.connect(self.import_stl)
+        self.act_stl.setEnabled(False)
+        mod.insertAction(mod.actions()[1], self.act_stl)
         sim = self.menus["Simulação"]
         sim.clear()
         self.act_passive = self._act(sim, "Dinâmica passiva SIM-001 (pêndulo duplo)…", self.new_passive, "Ctrl+Shift+P", enabled=False)
@@ -172,7 +178,7 @@ class MainWindow(QMainWindow):
         m = mb.addMenu("A&nálise")
         self.act_compare = self._act(m, "Comparação A vs B (último BIO-001)", self.show_comparison, enabled=False)
         self.act_png = self._act(m, "Exportar gráficos (PNG)…", self.export_png, enabled=False)
-        self._act(m, "Análises avançadas / IA (planejado — Fase 6)", lambda: None, enabled=False)
+        self.act_ai = self._act(m, "Análise assistida por IA (arquitetura pronta; sem provedor configurado)", self.run_ai_analysis, enabled=False)
 
         m = mb.addMenu("&Pesquisa")
         self.act_bio = self._act(m, "Novo experimento &BIO-001…", self.new_bio001, "Ctrl+B", enabled=False)
@@ -196,7 +202,7 @@ class MainWindow(QMainWindow):
     def _refresh(self, **_kw) -> None:
         pm = self.manager
         is_open = pm.is_open
-        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_bio2, self.act_exo, self.act_history, self.act_passive, self.act_limb):
+        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_bio2, self.act_exo, self.act_history, self.act_passive, self.act_limb, self.act_stl):
             a.setEnabled(is_open)
         has = is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID, exo001.EXPERIMENT_ID)
         any_res = is_open and self.last_result is not None
@@ -204,6 +210,7 @@ class MainWindow(QMainWindow):
         for a in (self.act_md, self.act_png):
             a.setEnabled(has)
         self.act_compare.setEnabled(has and self.last_result["id"] != exo001.EXPERIMENT_ID)
+        self.act_ai.setEnabled(any_res and len(self.ai_registry) > 0)
         self.act_pdf.setEnabled(is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID, exo001.EXPERIMENT_ID))
         self.act_rerun.setEnabled(is_open and self._selected_experiment() is not None)
         self.stack.setCurrentWidget(self.viewport if is_open else self.dashboard)
@@ -303,6 +310,42 @@ class MainWindow(QMainWindow):
         if idx is not None:
             self.load_model(idx)
 
+    def import_stl(self) -> None:
+        from PySide6.QtWidgets import QFileDialog, QInputDialog
+        path, _ = QFileDialog.getOpenFileName(self, "Importar malha STL", "", "STL (*.stl *.STL)")
+        if not path:
+            return
+        units, ok = QInputDialog.getItem(self, "Unidades do STL", "As coordenadas do arquivo estão em:",
+                                         list(self.manager.STL_UNITS), 0, False)
+        if not ok:
+            return
+        idx = self._guard_value(self.manager.import_stl, path, units)
+        if idx is not None:
+            log.info("Malha STL importada: %s (%s)", path, units)
+            self.show_mesh_model(self.manager.data["models"][idx])
+
+    def show_mesh_model(self, model: dict) -> None:
+        """Mostra uma malha STL do projeto no viewport 3D e suas estatísticas nas propriedades."""
+        from core.geometry.stl import StlError, load_stl
+        try:
+            mesh = load_stl(self.manager.path / model["file"]).scaled(float(model["scale_to_m"]))
+        except (NexusError, KeyError, TypeError, ValueError) as exc:
+            log.error("Malha inválida: %s", exc)
+            QMessageBox.critical(self, APP_NAME, f"Não foi possível carregar a malha: {exc}")
+            return
+        st = mesh.stats()
+        self.props.show_item("malha STL", {"nome": model["name"], "arquivo": model["file"], "unidade original": model["units"],
+                                           "triângulos": st["triangles"], "vértices": st["vertices"],
+                                           "mín (m)": [round(x, 4) for x in st["bounds_min"]],
+                                           "máx (m)": [round(x, 4) for x in st["bounds_max"]],
+                                           "área (m²)": round(st["area"], 6),
+                                           "volume (m³)": "malha aberta: sem volume" if st["volume"] is None else round(st["volume"], 9),
+                                           "origem": model.get("source", "")})
+        if self.viewport3d.show_mesh(mesh.vertices, mesh.faces):
+            self.viewport.setCurrentWidget(self.viewport3d)
+        else:
+            log.warning("Viewport 3D indisponível: estatísticas mostradas, malha não renderizada")
+
     def _guard_value(self, fn, *args):
         try:
             return fn(*args)
@@ -324,6 +367,9 @@ class MainWindow(QMainWindow):
         self.dock_pose.raise_()
 
     def _tree_selected(self, kind: str, payload: dict) -> None:
+        if kind == "model" and payload.get("type") == "stl_mesh":
+            self.show_mesh_model(payload)
+            return
         if kind == "model":
             idx = self.manager.data["models"].index(payload) if payload in self.manager.data["models"] else None
             if idx is not None and idx != self.model_index:
@@ -390,6 +436,20 @@ class MainWindow(QMainWindow):
         self._guard(self.manager.add_experiment, bio002.EXPERIMENT_ID, params.to_dict(), bio002.summary_dict(res),
                     lambda path: bio002.export_csv(res, path))
         self._show_result(res)
+
+    def run_ai_analysis(self) -> None:
+        names = self.ai_registry.names()
+        if not names or self.last_result is None:
+            return
+        try:
+            res = self.ai_registry.run(names[0], request_from_result(self.last_result))
+        except AiAnalysisError as exc:
+            log.error("%s", exc)
+            QMessageBox.critical(self, APP_NAME, str(exc))
+            return
+        self.results.setPlainText(f"{res.label}\nProvedor: {res.provider} · modelo: {res.model}\n\n{res.text}\n\nLimitações:\n"
+                                  + "\n".join(f"- {x}" for x in res.limitations))
+        self.bottom_tabs.setCurrentWidget(self.results)
 
     def show_history(self) -> None:
         from interface.dialogs.history_dialog import HistoryDialog

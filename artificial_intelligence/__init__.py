@@ -1,1 +1,1 @@
-"""Planejado - Fase 6. Sem IA fictícia: só arquitetura."""
+"""Arquitetura do módulo de análise assistida por IA. Nenhum provedor é incluído: sem provedor registrado, nada é gerado."""
