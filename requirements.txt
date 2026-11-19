@@ -1,7 +1,8 @@
-# Fase 1 — apenas o que é realmente usado
+# Fase 3 — apenas o que é realmente usado
 PySide6>=6.6
+numpy>=1.26
 # Testes
 pytest>=8
 pytest-qt>=4.4
 # Planejadas (NÃO usadas na Fase 1; serão adicionadas quando implementadas):
-# numpy, scipy, sympy (Fase 3) | vtk, pyvista (Fase 2) | pyqtgraph (Fase 5) | mujoco (Fase 6)
+# scipy, sympy (quando necessários) | vtk, pyvista (Fase 2) | pyqtgraph (Fase 5) | mujoco (Fase 6)
