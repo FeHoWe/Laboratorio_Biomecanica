@@ -29,9 +29,11 @@ from interface.widgets.viewport3d import Viewport3D
 from interface.panels.pose_panel import PosePanel
 from biomechanics.human_model.lower_limb import LowerLimbModel, JointLimitError
 from PySide6.QtCore import Qt as _Qt  # noqa: F401
-from research.experiments import bio001, bio002, passive_sim
+from research.experiments import bio001, bio002, bio003, passive_sim
 from interface.dialogs.bio002_dialog import Bio002Dialog
 from interface.dialogs.exo001_dialog import Exo001Dialog
+from interface.dialogs.bio003_dialog import Bio003Dialog
+from interface.widgets.spatial_player import SpatialPlayer
 from artificial_intelligence.base import AnalyzerRegistry, AiAnalysisError, request_from_result
 from exoskeleton.analysis import assist as exo001
 from infrastructure.workers.worker import TaskThread
@@ -113,6 +115,12 @@ class MainWindow(QMainWindow):
         self.bottom_tabs = tabs
         tabs.addTab(self.console, "Console")
         tabs.addTab(self.results, "Resultados")
+        self.player = SpatialPlayer()
+        self._player_q = None
+        self.player.frame_changed.connect(self._player_frame)
+        self.player.camera_requested.connect(self.viewport3d.spatial_camera)
+        self.player.visibility_changed.connect(self.viewport3d.spatial_visibility)
+        tabs.addTab(self.player, "Reprodução 3D")
         self.dock_bottom = self._dock("Resultados e Console", tabs, Qt.BottomDockWidgetArea)
 
     def _dock(self, title, widget, area) -> QDockWidget:
@@ -173,7 +181,7 @@ class MainWindow(QMainWindow):
         sim = self.menus["Simulação"]
         sim.clear()
         self.act_passive = self._act(sim, "Dinâmica passiva SIM-001 (pêndulo duplo)…", self.new_passive, "Ctrl+Shift+P", enabled=False)
-        self._act(sim, "Integração MuJoCo (planejado — Fase 6)", lambda: None, enabled=False)
+        self.act_mujoco = self._act(sim, "Comparar último BIO-003 com MuJoCo (opcional)…", self.compare_mujoco, enabled=False)
 
         m = mb.addMenu("A&nálise")
         self.act_compare = self._act(m, "Comparação A vs B (último BIO-001)", self.show_comparison, enabled=False)
@@ -184,6 +192,7 @@ class MainWindow(QMainWindow):
         self.act_bio = self._act(m, "Novo experimento &BIO-001…", self.new_bio001, "Ctrl+B", enabled=False)
         self.act_bio2 = self._act(m, "Novo experimento BIO-00&2 (3 segmentos)…", self.new_bio002, "Ctrl+Shift+B", enabled=False)
         self.act_exo = self._act(m, "Novo experimento EXO-001 (exoesqueleto)…", self.new_exo001, "Ctrl+Shift+E", enabled=False)
+        self.act_bio3 = self._act(m, "Novo experimento BIO-003 (dinâmica espacial 3D)…", self.new_bio003, "Ctrl+Alt+B", enabled=False)
         self.act_history = self._act(m, "Histórico de experimentos (SQLite)…", self.show_history, "Ctrl+H", enabled=False)
         self.act_rerun = self._act(m, "Reexecutar experimento selecionado", self.rerun_selected, enabled=False)
         m.addSeparator()
@@ -202,17 +211,18 @@ class MainWindow(QMainWindow):
     def _refresh(self, **_kw) -> None:
         pm = self.manager
         is_open = pm.is_open
-        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_bio2, self.act_exo, self.act_history, self.act_passive, self.act_limb, self.act_stl):
+        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio, self.act_bio2, self.act_exo, self.act_bio3, self.act_history, self.act_passive, self.act_limb, self.act_stl):
             a.setEnabled(is_open)
-        has = is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID, exo001.EXPERIMENT_ID)
+        has = is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID, exo001.EXPERIMENT_ID, bio003.EXPERIMENT_ID)
         any_res = is_open and self.last_result is not None
         self.act_csv.setEnabled(any_res)
         for a in (self.act_md, self.act_png):
             a.setEnabled(has)
-        self.act_compare.setEnabled(has and self.last_result["id"] != exo001.EXPERIMENT_ID)
+        self.act_compare.setEnabled(has and self.last_result["id"] not in (exo001.EXPERIMENT_ID, bio003.EXPERIMENT_ID))
         self.act_ai.setEnabled(any_res and len(self.ai_registry) > 0)
-        self.act_pdf.setEnabled(is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID, exo001.EXPERIMENT_ID))
+        self.act_pdf.setEnabled(is_open and self.last_result is not None and self.last_result["id"] in (bio001.EXPERIMENT_ID, bio002.EXPERIMENT_ID, exo001.EXPERIMENT_ID, bio003.EXPERIMENT_ID))
         self.act_rerun.setEnabled(is_open and self._selected_experiment() is not None)
+        self.act_mujoco.setEnabled(any_res and self.last_result["id"] == bio003.EXPERIMENT_ID)
         self.stack.setCurrentWidget(self.viewport if is_open else self.dashboard)
         self.tree.populate(pm.data)
         if not is_open:
@@ -486,8 +496,89 @@ class MainWindow(QMainWindow):
                     lambda path: exo001.export_csv(res, path))
         self._show_result(res)
 
+    # ---- BIO-003 (dinâmica espacial) com worker e reprodução 3D ----
+    def new_bio003(self) -> None:
+        dlg = Bio003Dialog(parent=self)
+        if dlg.exec():
+            self.run_bio003(dlg.params(), register=True)
+
+    def run_bio003(self, params, register: bool) -> None:
+        self._progress = QProgressDialog("Integrando dinâmica espacial…", "Cancelar", 0, 100, self)
+        self._progress.setWindowTitle("BIO-003")
+        self._progress.setMinimumDuration(0)
+        self._progress.setAutoClose(False)
+        self._progress.setAutoReset(False)
+        self._thread = TaskThread(lambda prog, canc: bio003.run(params, prog, canc), self)
+        self._progress.canceled.connect(self._thread.cancel)
+        self._thread.progress.connect(self._progress.setValue)
+        self._thread.succeeded.connect(lambda res: self._bio003_done(res, params, register))
+        self._thread.failed.connect(self._passive_failed)
+        self._thread.cancelled.connect(lambda: (self._progress.close(), log.info("BIO-003 cancelada")))
+        log.info("BIO-003 iniciada (thread separada)")
+        self._thread.start()
+
+    def _bio003_done(self, res: dict, params, register: bool) -> None:
+        self._progress.close()
+        for m in res["messages"]:
+            log.warning(m) if m.startswith("AVISO") else log.info(m)
+        if register:
+            self._guard(self.manager.add_experiment, bio003.EXPERIMENT_ID, params.to_dict(), bio003.summary_dict(res),
+                        lambda path: bio003.export_csv(res, path))
+        self._show_bio003(res, params)
+
+    def _show_bio003(self, res: dict, params) -> None:
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+        from visualization.charts.bio001_plots import make_bio003_figure
+        self.last_result = res
+        while self.plot_layout.count():
+            w = self.plot_layout.takeAt(0).widget()
+            if w:
+                w.deleteLater()
+        self.plot_layout.addWidget(FigureCanvasQTAgg(make_bio003_figure(res)))
+        s = res["summary"]
+        self.results.setPlainText(
+            f"BIO-003 — dinâmica espacial do membro inferior (DEMONSTRATIVO)\nAmostras: {s['samples']} · integrador: {s['method']} · dt = {s['dt_s']} s\n"
+            f"Energia mecânica: {s['energy_initial_j']:.6g} → {s['energy_final_j']:.6g} J (deriva relativa {s['energy_drift_rel']:.3e}"
+            f"{'' if s['conservative_run'] else '; com torques não se espera conservação'})\n"
+            f"Trabalho dos torques {s['work_torques_j']:.6g} J vs ΔE {s['delta_energy_j']:.6g} J\n\n" + "\n".join(res["messages"]))
+        self.chain3d = bio003.build_chain(params)
+        self.player.set_time(res["t"])
+        self._player_q = res["q"]
+        if self.viewport3d.set_spatial_chain(self.chain3d, res["q"][0]):
+            self.viewport.setCurrentWidget(self.viewport3d)
+            self.bottom_tabs.setCurrentWidget(self.player)
+        else:
+            self.viewport.setCurrentWidget(self.plot_host)
+            log.warning("Viewport 3D indisponível: gráficos exibidos sem animação 3D")
+        self._refresh()
+
+    def compare_mujoco(self) -> None:
+        from simulation.physics_engines import mujoco_adapter
+        if not mujoco_adapter.available():
+            QMessageBox.information(self, APP_NAME, "MuJoCo não está instalado (pip install mujoco). Nenhum resultado MuJoCo é inventado.")
+            return
+        if not self.last_result or self.last_result["id"] != bio003.EXPERIMENT_ID:
+            return
+        from simulation.physics_engines.compare import compare_bio003
+        try:
+            r = compare_bio003(bio003.Bio003Params.from_dict(self.last_result["params"]))
+        except NexusError as exc:
+            log.error("%s", exc)
+            QMessageBox.critical(self, APP_NAME, str(exc))
+            return
+        self.results.appendPlainText("\nComparação com MuJoCo " + r["mujoco_version"] + " (dinâmica livre):\n" + "\n".join(
+            f"  {k}: {v:.3e}" if isinstance(v, float) else f"  {k}: {v}" for k, v in r.items()))
+        self.bottom_tabs.setCurrentWidget(self.results)
+
+    def _player_frame(self, i: int) -> None:
+        if getattr(self, "_player_q", None) is not None:
+            self.viewport3d.show_spatial_frame(self._player_q[i])
+
     def rerun_selected(self) -> None:
         exp = self._selected_experiment()
+        if exp and exp.get("type") == bio003.EXPERIMENT_ID:
+            self.run_bio003(bio003.Bio003Params.from_dict(exp["params"]), register=False)
+            return
         if exp and exp.get("type") == exo001.EXPERIMENT_ID:
             self._show_result(exo001.run(exo001.Exo001Params.from_dict(exp["params"])))
             log.info("Reexecução de %s concluída (determinística)", exp["id"])
@@ -616,7 +707,7 @@ class MainWindow(QMainWindow):
 
     def _module(self):
         return {bio001.EXPERIMENT_ID: bio001, bio002.EXPERIMENT_ID: bio002,
-                passive_sim.EXPERIMENT_ID: passive_sim, exo001.EXPERIMENT_ID: exo001}[self.last_result["id"]]
+                passive_sim.EXPERIMENT_ID: passive_sim, exo001.EXPERIMENT_ID: exo001, bio003.EXPERIMENT_ID: bio003}[self.last_result["id"]]
 
     def export_report(self) -> None:
         def w(p):

@@ -13,3 +13,7 @@ Logs e projetos recentes: `%USERPROFILE%\.nexus_biomechanics\` (altere com a var
 ## Gerar o executável (.exe)
 Com o venv ativo: `build_windows.bat` -> `dist\NEXUS_BIOMECHANICS\NEXUS_BIOMECHANICS.exe` (pasta portátil).
 Verificado em Linux (build e inicialização); o build no Windows ainda não foi testado por mim — se falhar, envie o log.
+
+
+## Dependências (v1.1)
+`pip install -r requirements.txt` instala também SciPy (integrador adaptativo e utilidades). MuJoCo é opcional: `pip install mujoco` habilita Simulação → Comparar com MuJoCo.

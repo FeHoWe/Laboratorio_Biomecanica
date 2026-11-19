@@ -56,13 +56,52 @@ class Viewport3D(QWidget):
         if name:
             self.segment_picked.emit(name)
 
+    def _reset_plotter(self) -> None:
+        """Troca de tipo de cena: limpa o plotter e descarta cenas anteriores (cada cena recria só o que usa)."""
+        from visualization.viewport_3d.scene import LimbScene
+        self.plotter.clear()
+        self.spatial_scene = None
+        self.scene = LimbScene(self.plotter)
+
     def set_model(self, model: LowerLimbModel | None) -> None:
         if self.available and model is not None:
+            if getattr(self, "spatial_scene", None) is not None:
+                self._reset_plotter()
             self.scene.set_model(model)
+
+    # ---- cena espacial dinâmica (BIO-003) ----
+    spatial_scene = None
+
+    def set_spatial_chain(self, chain, q=None) -> bool:
+        if not self.available:
+            return False
+        from visualization.viewport_3d.spatial_scene import SpatialScene
+        self.plotter.clear()
+        self.scene.meshes.clear()
+        self.scene.actors.clear()
+        self.scene._static = False
+        self.spatial_scene = SpatialScene(self.plotter)
+        self.spatial_scene.set_chain(chain, q)
+        return True
+
+    def show_spatial_frame(self, q) -> None:
+        if self.available and self.spatial_scene is not None:
+            self.spatial_scene.update(q)
+
+    def spatial_camera(self, preset: str) -> None:
+        if self.available and self.spatial_scene is not None:
+            self.spatial_scene.camera(preset)
+
+    def spatial_visibility(self, axes: bool, com: bool) -> None:
+        if self.available and self.spatial_scene is not None:
+            self.spatial_scene.set_visibility(axes, com)
+            self.plotter.render()
 
     def show_mesh(self, vertices, faces) -> bool:
         if not self.available:
             return False
+        if getattr(self, "spatial_scene", None) is not None:
+            self._reset_plotter()
         self.scene.show_mesh(vertices, faces)
         return True
 

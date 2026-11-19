@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NEXUS BIOMECHANICS — Mobile</title>
+<style>
+:root{--bg:#10141C;--p:#181F2B;--p2:#222C3A;--blue:#2389FF;--cy:#19C7D9;--t:#E8EDF5;--t2:#94A3B8;--warn:#F5A623;--err:#FF5C6C;--ok:#3DD68C}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t);font:15px/1.4 system-ui,-apple-system,'Segoe UI',sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(64px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
+header{padding:14px 16px;background:var(--p);border-bottom:1px solid var(--p2)}
+h1{font-size:18px;margin:0;letter-spacing:.5px}
+header small{color:var(--t2)}
+main{padding:14px 16px}
+.card{background:var(--p);border:1px solid var(--p2);border-radius:8px;padding:12px;margin-bottom:12px}
+.card h2{font-size:13px;margin:0 0 8px;color:var(--cy);text-transform:uppercase;letter-spacing:.8px}
+label{display:block;color:var(--t2);font-size:12px;margin:8px 0 3px}
+input,textarea{width:100%;background:var(--bg);color:var(--t);border:1px solid var(--p2);border-radius:6px;padding:10px;font:inherit}
+textarea{min-height:70px}
+button{background:var(--p2);color:var(--t);border:1px solid var(--blue);border-radius:6px;padding:10px 14px;font:inherit;margin:6px 6px 0 0}
+button.primary{background:var(--blue)}
+button:disabled{opacity:.4;border-color:var(--p2)}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--p);border-top:1px solid var(--p2);padding-bottom:env(safe-area-inset-bottom)}
+nav{overflow-x:auto}nav button{flex:1 0 auto;padding-left:12px;padding-right:12px;margin:0;border:0;border-radius:0;background:transparent;padding:14px 4px;color:var(--t2)}
+nav button.on{color:var(--cy);box-shadow:inset 0 2px 0 var(--cy)}
+.tree ul{list-style:none;margin:0;padding-left:18px;border-left:1px solid var(--p2)}
+.tree>ul{padding-left:0;border:0}
+.tree li{padding:6px 4px;cursor:pointer;border-radius:4px}
+.tree li.sel{background:var(--blue)}
+.muted{color:var(--t2)} .planned{color:var(--warn)}
+pre{white-space:pre-wrap;word-break:break-all;font-size:12px;margin:0;color:var(--t)}
+.log{font:12px/1.5 ui-monospace,Menlo,monospace;max-height:50vh;overflow:auto}
+.log .WARN{color:var(--warn)} .log .ERR{color:var(--err)}
+.hidden{display:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.vp{height:180px;border:1px solid var(--p2);border-radius:8px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--cy);background-image:linear-gradient(var(--p2) 1px,transparent 1px),linear-gradient(90deg,var(--p2) 1px,transparent 1px);background-size:30px 30px}
+</style>
+</head>
+<body>
+<header><h1>NEXUS BIOMECHANICS <small>mobile · v1.1.0 · BIO-001/002/003 + SIM-001 + EXO-001 + 3D/STL + histórico</small></h1>
+<small>Pesquisa e aprendizado computacional. Não é dispositivo médico.</small></header>
+<main>
+<section id="tab-proj">
+  <div id="noproj" class="card">
+    <h2>Novo projeto</h2>
+    <label>Nome</label><input id="nn" placeholder="Ex.: Perna — estudo 1">
+    <label>Descrição</label><textarea id="nd"></textarea>
+    <button class="primary" id="bnew">Criar projeto</button>
+    <button id="bimp">Importar project.json…</button>
+    <input type="file" id="file" accept=".json,application/json" class="hidden">
+  </div>
+  <div id="hasproj" class="hidden">
+    <div class="card"><h2>Propriedades</h2>
+      <label>Nome</label><input id="pn"><label>Descrição</label><textarea id="pd"></textarea>
+      <button class="primary" id="bapply">Aplicar</button>
+      <button id="bsave">Salvar</button>
+      <button id="bcopy">Copiar project.json</button>
+      <button id="bclose">Fechar</button>
+      <div id="meta" class="muted" style="margin-top:10px;font-size:12px"></div>
+    </div>
+  </div>
+</section>
+<section id="tab-tree" class="hidden">
+  <div class="card tree"><h2>Componentes</h2><div id="tree"></div></div>
+  <div class="card"><h2>Item selecionado</h2><pre id="sel" class="muted">Nenhum projeto aberto.</pre></div>
+  <div class="card"><h2>Viewport 3D</h2><div class="vp">PLANEJADO (Fase 2)<br>sem 3D nesta fase</div></div>
+</section>
+<section id="tab-log" class="hidden">
+  <div class="card"><h2>Console</h2><div id="log" class="log"></div></div>
+  <div class="card"><h2>Menus planejados</h2><div class="planned" style="font-size:13px">Modelo · Biomecânica · Simulação · Análise · Pesquisa — desabilitados até as Fases 2–5. Nenhum resultado científico é exibido nesta versão.</div></div>
+</section>
+</main>
+<section id="tab-kin" class="hidden">
+  <div class="card"><h2>Cadeia de 2 segmentos (SI, plano x-y)</h2>
+    <div class="grid"><div><label>l1 (m)</label><input id="l1" type="number" step="0.01" value="0.45"></div><div><label>l2 (m)</label><input id="l2" type="number" step="0.01" value="0.40"></div>
+    <div><label>m1 (kg)</label><input id="m1" type="number" step="0.1" value="7"></div><div><label>m2 (kg)</label><input id="m2" type="number" step="0.1" value="3"></div>
+    <div><label>CM1 (fração)</label><input id="a1" type="number" step="0.01" value="0.43"></div><div><label>CM2 (fração)</label><input id="a2" type="number" step="0.01" value="0.40"></div>
+    <div><label>q1 abs (°)</label><input id="q1" type="number" step="1" value="-60"></div><div><label>q2 rel (°)</label><input id="q2" type="number" step="1" value="40"></div>
+    <div><label>Fx ponta (N)</label><input id="fx" type="number" step="1" value="0"></div><div><label>Fy ponta (N)</label><input id="fy" type="number" step="1" value="0"></div></div>
+    <button class="primary" id="bcalc">Calcular direta + torque</button>
+    <pre id="kout" style="margin-top:10px"></pre>
+    <canvas id="cv" width="300" height="220" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:10px"></canvas>
+    <h2 style="margin-top:14px">Cinemática inversa</h2>
+    <div class="grid"><div><label>x alvo (m)</label><input id="tx" type="number" step="0.01" value="0.5"></div><div><label>y alvo (m)</label><input id="ty" type="number" step="0.01" value="-0.4"></div></div>
+    <button id="bik">Resolver (cotovelo p/ baixo)</button><button id="bik2">Resolver (p/ cima)</button>
+    <pre id="iout" style="margin-top:10px"></pre>
+    <div class="muted" style="font-size:12px;margin-top:8px">Mesmas fórmulas do desktop (SIMULATION_METHODS.md). Hipóteses: corpos rígidos, juntas ideais, sem músculos, g=9,80665 m/s². Parâmetros são entradas suas, não dados anatômicos verificados.</div>
+  </div>
+</section>
+<section id="tab-bio" class="hidden">
+  <div class="card"><h2>BIO-001 — Comparative Joint Mechanics</h2>
+    <div class="planned" style="font-size:12px;margin-bottom:8px">Parâmetros padrão DEMONSTRATIVOS (hipotéticos). Não representam anatomia real.</div>
+    <div class="grid"><div><label>Duração (s)</label><input id="bT" type="number" step="0.1" value="1"></div><div><label>Amostras</label><input id="bN" type="number" value="201"></div></div>
+    <div id="bform"></div>
+    <button class="primary" id="brun">Executar BIO-001</button>
+    <button id="bsaveexp">Registrar no projeto</button>
+    <pre id="bout" style="margin-top:10px"></pre>
+    <canvas id="bc1" width="300" height="170" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <canvas id="bc2" width="300" height="170" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <div class="muted" style="font-size:12px;margin-top:8px">Azul = A (humano simplificado), ciano = B (jarrete simplificado). Torque = M q̈ + C + G − Jᵀ F. Sem músculos, sem atrito, 2D.</div>
+  </div>
+</section>
+<section id="tab-sim" class="hidden">
+  <div class="card"><h2>SIM-001 — Dinâmica passiva</h2>
+    <div class="planned" style="font-size:12px;margin-bottom:8px">DEMONSTRATIVO. Sem torques e sem atrito: a energia deve se conservar (deriva reportada).</div>
+    <div id="sform" class="grid"></div>
+    <button class="primary" id="srun">Simular (RK4)</button><button id="ssave">Registrar no projeto</button>
+    <pre id="sout" style="margin-top:10px"></pre>
+    <canvas id="sc1" width="300" height="170" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <canvas id="sc2" width="300" height="170" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+  </div>
+</section>
+<section id="tab-mod" class="hidden">
+  <div class="card"><h2>Modelo de membro inferior (vista sagital 2D)</h2>
+    <div class="planned" style="font-size:12px;margin-bottom:8px">DEMONSTRATIVO. A vista 3D com VTK existe só no desktop. Aqui: mesma cinemática, em 2D.</div>
+    <button class="primary" id="mnew">Criar modelo no projeto</button>
+    <div id="mctl"></div>
+    <canvas id="mc" width="300" height="300" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <pre id="mout" class="muted" style="margin-top:8px"></pre>
+  </div>
+</section>
+<section id="tab-b2" class="hidden">
+  <div class="card"><h2>BIO-002 — 3 segmentos (humano vs. jarrete)</h2>
+    <div class="planned" style="font-size:12px;margin-bottom:8px">DEMONSTRATIVO. q1 absoluto; q2, q3 relativos ao segmento anterior.</div>
+    <div class="grid"><div><label>Duração (s)</label><input id="b2T" type="number" step="0.1" value="1"></div><div><label>Amostras</label><input id="b2N" type="number" value="151"></div></div>
+    <div id="b2form"></div>
+    <button class="primary" id="b2run">Executar BIO-002</button><button id="b2save">Registrar no projeto</button>
+    <pre id="b2out" style="margin-top:10px"></pre>
+    <canvas id="b2c0" width="300" height="150" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <canvas id="b2c1" width="300" height="150" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <canvas id="b2c2" width="300" height="150" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+  </div>
+</section>
+<section id="tab-exo" class="hidden">
+  <div class="card"><h2>EXO-001 — Exoesqueleto (assistência articular)</h2>
+    <div class="planned" style="font-size:12px;margin-bottom:8px">DEMONSTRATIVO. Modelo humano de 3 segmentos (BIO-002, modelo A) + atuador hipotético. Não representa produto real nem dispositivo médico.</div>
+    <div id="exform"></div>
+    <button class="primary" id="exrun">Executar EXO-001</button><button id="exsave">Registrar no projeto</button>
+    <pre id="exout" style="margin-top:10px"></pre>
+    <canvas id="exc0" width="300" height="170" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <canvas id="exc1" width="300" height="150" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+  </div>
+</section>
+<section id="tab-d3" class="hidden">
+  <div class="card"><h2>Vista 3D do membro inferior</h2>
+    <div class="planned" style="font-size:12px;margin-bottom:8px">DEMONSTRATIVO. Render 3D por software (canvas), mesma cinemática do desktop (VTK). Arraste: girar · dois dedos: zoom e deslocar · toque num segmento: selecionar · roda do mouse: zoom.</div>
+    <button class="primary" id="v3new">Criar modelo no projeto</button><button id="v3reset">Resetar câmera</button>
+    <div style="margin-top:8px"><label>Importar malha STL (só visualização; não é salva no projeto)</label><input type="file" id="v3stl" accept=".stl"><div class="grid"><div><label>Unidade do arquivo</label><select id="v3unit"><option value="0.001">mm</option><option value="0.01">cm</option><option value="1">m</option><option value="0.0254">in</option></select></div><div><button id="v3stlclear">Remover malha</button></div></div></div>
+    <canvas id="v3c" width="320" height="360" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <div id="v3ctl"></div>
+    <div style="margin-top:6px"><label style="display:inline"><input type="checkbox" id="v3t_grid" checked> grade</label> <label style="display:inline"><input type="checkbox" id="v3t_axes" checked> eixos</label> <label style="display:inline"><input type="checkbox" id="v3t_com" checked> CM</label></div>
+    <pre id="v3out" class="muted" style="margin-top:8px"></pre>
+  </div>
+</section>
+<section id="tab-b3" class="hidden">
+  <div class="card"><h2>BIO-003 — Dinâmica espacial do membro inferior (3D)</h2>
+    <div class="planned" style="font-size:12px;margin-bottom:8px">DEMONSTRATIVO. Quadril 3 DOFs, joelho 1, tornozelo 2 (simplificações mecânicas). Segmentos padrão fixos no celular; limites só reportados. Não é dispositivo médico.</div>
+    <div id="b3form"></div>
+    <button class="primary" id="b3run">Executar BIO-003 (RK4)</button><button id="b3save">Registrar no projeto</button>
+    <pre id="b3out" style="margin-top:10px"></pre>
+    <canvas id="b3c3" width="320" height="300" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <div style="display:flex;gap:8px;align-items:center"><button id="b3play" disabled>▶ Reproduzir</button><input type="range" id="b3sl" min="0" max="0" value="0" disabled><span id="b3t" class="muted" style="font-size:12px;white-space:nowrap"></span></div>
+    <canvas id="b3c1" width="300" height="170" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+    <canvas id="b3c2" width="300" height="170" style="width:100%;background:var(--bg);border:1px solid var(--p2);border-radius:8px;margin-top:8px"></canvas>
+  </div>
+</section>
+<section id="tab-hist" class="hidden">
+  <div class="card"><h2>Histórico de experimentos</h2>
+    <div class="planned" style="font-size:12px;margin-bottom:8px">Consulta o project.json aberto (no desktop o mesmo índice fica em SQLite). Filtre por tipo e ordene por uma métrica do resumo.</div>
+    <div class="grid"><div><label>Tipo</label><select id="h_type"></select></div><div><label>Ordem</label><select id="h_ord"><option value="asc">crescente</option><option value="desc">decrescente</option></select></div></div>
+    <label>Métrica</label><select id="h_metric"></select>
+    <pre id="h_out" style="margin-top:10px"></pre>
+  </div>
+</section>
+<nav><button data-t="proj" class="on">Projeto</button><button data-t="tree">Árvore</button><button data-t="kin">Cinemática</button><button data-t="mod">Modelo</button><button data-t="d3">3D</button><button data-t="hist">Histórico</button><button data-t="bio">BIO-001</button><button data-t="b2">BIO-002</button><button data-t="exo">EXO-001</button><button data-t="b3">BIO-003</button><button data-t="sim">SIM-001</button><button data-t="log">Console</button></nav>
+<script>
+const FORMAT="nexus-biomechanics-project",SCHEMA=1;
+const $=id=>document.getElementById(id);
+let proj=null,dirty=false;
+const logEl=$("log");
+function log(level,msg){const d=document.createElement("div");d.className=level;d.textContent=new Date().toTimeString().slice(0,8)+" "+level.padEnd(5)+" "+msg;logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight}
+function validate(d){
+  if(!d||typeof d!=="object"||Array.isArray(d))throw new Error("Raiz deve ser objeto JSON");
+  if(d.format!==FORMAT)throw new Error("Formato desconhecido: "+d.format);
+  if(!Number.isInteger(d.schema_version)||d.schema_version<1||d.schema_version>SCHEMA)throw new Error("schema_version não suportado");
+  for(const k of["id","name","description","created","modified"])if(typeof d[k]!=="string")throw new Error("Campo inválido: "+k);
+  if(!d.name.trim()||d.name.trim().length>120)throw new Error("Nome deve ter 1 a 120 caracteres");
+  for(const k of["created","modified"])if(isNaN(Date.parse(d[k])))throw new Error("Data inválida em "+k);
+  for(const k of["models","experiments"]){if(!Array.isArray(d[k]))throw new Error("'"+k+"' deve ser lista");
+    for(const i of d[k])if(!i||typeof i.name!=="string")throw new Error("Itens de '"+k+"' precisam de 'name'")}
+  if(!d.settings||typeof d.settings!=="object")throw new Error("Campo inválido: settings");
+  return d}
+const now=()=>new Date().toISOString().replace(/\.\d+Z$/,"+00:00");
+function uuid(){return crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c=="x"?r:r&3|8).toString(16)})}
+function persist(){try{localStorage.setItem("nexus_proj",JSON.stringify(proj))}catch(e){}}
+function updMeta(){if(!proj)return;$("meta").textContent=`ID: ${proj.id}\nCriado: ${proj.created}\nModificado: ${proj.modified}\nUnidades: ${proj.settings.units||"-"}\nEstado: ${dirty?"modificado":"salvo"}`}
+function render(){
+  const open=!!proj;
+  $("noproj").classList.toggle("hidden",open);$("hasproj").classList.toggle("hidden",!open);
+  if(open){$("pn").value=proj.name;$("pd").value=proj.description;
+    $("meta").textContent=`ID: ${proj.id}\nCriado: ${proj.created}\nModificado: ${proj.modified}\nUnidades: ${proj.settings.units||"-"}\nEstado: ${dirty?"modificado":"salvo"}`;$("meta").style.whiteSpace="pre-wrap"}
+  renderTree();if(typeof pickLimb==="function"&&!window._inLimb){window._inLimb=1;try{pickLimb()}finally{window._inLimb=0}}
+}
+let selPayload=null,selKind=null;
+function renderTree(){
+  const t=$("tree");t.innerHTML="";
+  if(!proj){$("sel").textContent="Nenhum projeto aberto.";return}
+  const ul=document.createElement("ul");
+  const mk=(txt,kind,payload,parent)=>{const li=document.createElement("li");li.textContent=txt;li.onclick=e=>{e.stopPropagation();document.querySelectorAll(".tree li").forEach(x=>x.classList.remove("sel"));li.classList.add("sel");$("sel").textContent="Tipo: "+kind+"\n"+Object.entries(payload).map(([k,v])=>k+": "+(typeof v==="object"?JSON.stringify(v):v)).join("\n")};parent.appendChild(li);return li};
+  const root=mk(proj.name+(dirty?" *":""),"project",{nome:proj.name,id:proj.id,modelos:proj.models.length,experimentos:proj.experiments.length},ul);
+  const sub=document.createElement("ul");
+  for(const [label,key] of[["Modelos","models"],["Experimentos","experiments"]]){
+    const g=mk(`${label} (${proj[key].length})`,"grupo",{grupo:label,itens:proj[key].length},sub);
+    if(proj[key].length){const cu=document.createElement("ul");for(const it of proj[key])mk(it.name,key.slice(0,-1),it,cu);g.appendChild(cu)}}
+  root.appendChild(sub);t.appendChild(ul);
+}
+$("bnew").onclick=()=>{
+  const name=$("nn").value.trim();
+  if(!name){log("ERR","Nome obrigatório");return}
+  proj={format:FORMAT,schema_version:SCHEMA,id:uuid(),name,description:$("nd").value,created:now(),modified:now(),models:[],experiments:[],settings:{units:"SI"}};
+  validate(proj);dirty=false;persist();log("INFO","Projeto criado: "+name);render();
+};
+$("bapply").onclick=()=>{
+  const n=$("pn").value.trim();
+  try{const c={...proj,name:n,description:$("pd").value};validate(c);proj=c;dirty=true;log("INFO","Metadados alterados (não salvo)")}
+  catch(e){log("ERR",e.message)}
+  render();
+};
+$("bsave").onclick=()=>{proj.modified=now();dirty=false;persist();log("INFO","Projeto salvo no navegador deste aparelho");render()};
+$("bclose").onclick=()=>{log("INFO","Projeto fechado: "+proj.name);proj=null;dirty=false;try{localStorage.removeItem("nexus_proj")}catch(e){}render()};
+$("bcopy").onclick=async()=>{
+  const txt=JSON.stringify(proj,null,2);
+  try{await navigator.clipboard.writeText(txt);log("INFO","project.json copiado — cole no arquivo do desktop")}
+  catch(e){log("WARN","Cópia bloqueada; texto abaixo:");log("INFO",txt)}
+};
+$("bimp").onclick=()=>$("file").click();
+$("file").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{proj=validate(JSON.parse(await f.text()));dirty=false;persist();log("INFO","Importado: "+proj.name)}
+  catch(err){log("ERR","Arquivo inválido: "+err.message)}
+  e.target.value="";render();
+};
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll('[id^="tab-"]').forEach(sec=>sec.classList.toggle("hidden",sec.id!=="tab-"+b.dataset.t))});
+const G=9.80665,D=Math.PI/180,V=id=>parseFloat($(id).value);
+function chain(){const l1=V("l1"),l2=V("l2");if(!(l1>0&&l2>0))throw new Error("Comprimentos devem ser positivos");return{l1,l2}}
+function fk(l1,l2,q1,q2){const j=[l1*Math.cos(q1),l1*Math.sin(q1)];return{j,t:[j[0]+l2*Math.cos(q1+q2),j[1]+l2*Math.sin(q1+q2)]}}
+function draw(l1,l2,q1,q2){const c=$("cv"),x=c.getContext("2d");x.clearRect(0,0,c.width,c.height);const s=Math.min(c.width,c.height)/2.3/(l1+l2),ox=c.width/2,oy=c.height/2;
+  const P=p=>[ox+p[0]*s,oy-p[1]*s];const f=fk(l1,l2,q1,q2),a=P([0,0]),b=P(f.j),e=P(f.t);
+  x.strokeStyle="#2389FF";x.lineWidth=5;x.lineCap="round";x.beginPath();x.moveTo(...a);x.lineTo(...b);x.lineTo(...e);x.stroke();
+  x.fillStyle="#19C7D9";for(const p of[a,b,e]){x.beginPath();x.arc(p[0],p[1],5,0,7);x.fill()}}
+$("bcalc").onclick=()=>{try{
+  const{l1,l2}=chain(),q1=V("q1")*D,q2=V("q2")*D,m1=V("m1"),m2=V("m2"),a1=V("a1")*l1,a2=V("a2")*l2,Fx=V("fx")||0,Fy=V("fy")||0;
+  if(!(m1>0&&m2>0))throw new Error("Massas devem ser positivas");
+  const f=fk(l1,l2,q1,q2),c1=Math.cos(q1),c12=Math.cos(q1+q2),s1=Math.sin(q1),s12=Math.sin(q1+q2);
+  const g2=m2*G*a2*c12,g1=m1*G*a1*c1+m2*G*(l1*c1+a2*c12);
+  const J=[[-l1*s1-l2*s12,-l2*s12],[l1*c1+l2*c12,l2*c12]];
+  const t1=g1-(J[0][0]*Fx+J[1][0]*Fy),t2=g2-(J[0][1]*Fx+J[1][1]*Fy);
+  $("kout").textContent=`Junta: (${f.j[0].toFixed(4)}, ${f.j[1].toFixed(4)}) m\nPonta: (${f.t[0].toFixed(4)}, ${f.t[1].toFixed(4)}) m\nTorque estático junta 1: ${t1.toFixed(3)} N·m\nTorque estático junta 2: ${t2.toFixed(3)} N·m\n(τ = τ_gravidade − Jᵀ·F)`;
+  draw(l1,l2,q1,q2);log("INFO",`Direta/torque calculados: τ1=${t1.toFixed(2)} τ2=${t2.toFixed(2)} N·m`)}catch(e){$("kout").textContent="Erro: "+e.message;log("ERR",e.message)}};
+function ik(el){try{const{l1,l2}=chain(),x=V("tx"),y=V("ty"),c2=(x*x+y*y-l1*l1-l2*l2)/(2*l1*l2);
+  if(Math.abs(c2)>1+1e-12)throw new Error(`Alvo fora do alcance [${Math.abs(l1-l2).toFixed(3)}, ${(l1+l2).toFixed(3)}] m`);
+  const q2=Math.acos(Math.max(-1,Math.min(1,c2)))*el,q1=Math.atan2(y,x)-Math.atan2(l2*Math.sin(q2),l1+l2*Math.cos(q2));
+  $("iout").textContent=`q1 = ${(q1/D).toFixed(3)}°\nq2 = ${(q2/D).toFixed(3)}°`;$("q1").value=(q1/D).toFixed(3);$("q2").value=(q2/D).toFixed(3);draw(l1,l2,q1,q2)}catch(e){$("iout").textContent="Erro: "+e.message;log("ERR",e.message)}}
+$("bik").onclick=()=>ik(1);$("bik2").onclick=()=>ik(-1);
+
+/*BIO_START*/
+const SRC="DEMONSTRATIVO (hipotético, sem fonte científica verificada)";
+const BIO_DEFAULT=()=>({duration_s:1,samples:201,
+ model_a:{name:"A — Membro inferior humano simplificado",l1:0.43,m1:7,com1:0.43,l2:0.43,m2:3.2,com2:0.43,q1_start_deg:-90,q1_end_deg:-60,q2_start_deg:0,q2_end_deg:60,tip_force_n:[0,0],source:SRC},
+ model_b:{name:"B — Membro posterior animal simplificado (jarrete)",l1:0.30,m1:2,com1:0.45,l2:0.28,m2:0.8,com2:0.40,q1_start_deg:-90,q1_end_deg:-55,q2_start_deg:0,q2_end_deg:-70,tip_force_n:[0,0],source:SRC}});
+function minJerk(q0,qf,T,n){const t=[],q=[],qd=[],qdd=[],d=qf-q0;for(let i=0;i<n;i++){const ti=T*i/(n-1),s=ti/T;t.push(ti);
+ q.push(q0+d*(10*s**3-15*s**4+6*s**5));qd.push(d*(30*s**2-60*s**3+30*s**4)/T);qdd.push(d*(60*s-180*s**2+120*s**3)/T**2)}return{t,q,qd,qdd}}
+function bioModel(c,T,n){
+ const R=Math.PI/180,l1=c.l1,l2=c.l2,m1=c.m1,m2=c.m2,a1=c.com1*l1,a2=c.com2*l2,I1=m1*l1*l1/12,I2=m2*l2*l2/12;
+ for(const [k,v] of Object.entries({l1,m1,l2,m2}))if(!(v>0))throw new Error(`[${c.name}] ${k} deve ser > 0`);
+ const j1=minJerk(c.q1_start_deg*R,c.q1_end_deg*R,T,n),j2=minJerk(c.q2_start_deg*R,c.q2_end_deg*R,T,n),[Fx,Fy]=c.tip_force_n;
+ const tau=[[],[]],pw=[[],[]];
+ for(let i=0;i<n;i++){const q1=j1.q[i],q2=j2.q[i],d1=j1.qd[i],d2=j2.qd[i],dd1=j1.qdd[i],dd2=j2.qdd[i],c2=Math.cos(q2);
+  const M22=m2*a2*a2+I2,M12=M22+m2*l1*a2*c2,M11=m1*a1*a1+I1+m2*(l1*l1+a2*a2+2*l1*a2*c2)+I2;
+  const h=-m2*l1*a2*Math.sin(q2),C1=h*(2*d1*d2+d2*d2),C2=-h*d1*d1;
+  const c1=Math.cos(q1),c12=Math.cos(q1+q2),s1=Math.sin(q1),s12=Math.sin(q1+q2);
+  const G2=m2*G*a2*c12,G1=m1*G*a1*c1+m2*G*(l1*c1+a2*c12);
+  const J11=-l1*s1-l2*s12,J12=-l2*s12,J21=l1*c1+l2*c12,J22=l2*c12;
+  const t1=M11*dd1+M12*dd2+C1+G1-(J11*Fx+J21*Fy),t2=M12*dd1+M22*dd2+C2+G2-(J12*Fx+J22*Fy);
+  tau[0].push(t1);tau[1].push(t2);pw[0].push(t1*d1);pw[1].push(t2*d2)}
+ const pk=a=>Math.max(...a.map(Math.abs)),ref=(m1+m2)*G*(l1+l2);
+ return{name:c.name,t:j1.t,tau,pw,qd:[j1.qd,j2.qd],summary:{peak_abs_torque_nm:[pk(tau[0]),pk(tau[1])],peak_abs_ang_vel_rad_s:[pk(j1.qd),pk(j2.qd)],
+  peak_abs_power_w:[pk(pw[0]),pk(pw[1])],work_j:[0,1].map(k=>{let w=0;for(let i=1;i<n;i++)w+=(pw[k][i]+pw[k][i-1])*(j1.t[i]-j1.t[i-1])/2;return w}),
+  total_mass_kg:m1+m2,total_length_m:l1+l2,peak_torque_normalized:[pk(tau[0])/ref,pk(tau[1])/ref]}}}
+function bioRun(p){
+ if(!(p.duration_s>0))throw new Error("duration_s deve ser > 0");if(!(Number.isInteger(p.samples)&&p.samples>=5))throw new Error("samples deve ser inteiro >= 5");
+ const A=bioModel(p.model_a,p.duration_s,p.samples),B=bioModel(p.model_b,p.duration_s,p.samples),msgs=[];
+ for(const r of[A,B]){const w=Math.max(...r.summary.peak_abs_ang_vel_rad_s);if(w>20)msgs.push(`AVISO [${r.name}]: velocidade angular de pico ${w.toFixed(1)} rad/s — verifique a duração.`)}
+ msgs.push("Parâmetros demonstrativos: resultados ilustram o método, não anatomia real.");return{A,B,messages:msgs,params:p}}
+/*BIO_END*/
+const BIO_FIELDS=[["l1","L1 (m)"],["m1","m1 (kg)"],["com1","CM1 (fração)"],["l2","L2 (m)"],["m2","m2 (kg)"],["com2","CM2 (fração)"],["q1_start_deg","q1 ini (°)"],["q1_end_deg","q1 fim (°)"],["q2_start_deg","q2 ini (°)"],["q2_end_deg","q2 fim (°)"],["fx","Fx ponta (N)"],["fy","Fy ponta (N)"]];
+const bdef=BIO_DEFAULT();
+(function(){let h="";for(const[k,mk] of[["a","model_a"],["b","model_b"]]){h+=`<h2 style="margin-top:12px">${k==="a"?"Modelo A":"Modelo B"}</h2><div class="grid">`;
+ for(const[f,l] of BIO_FIELDS){const v=f==="fx"?bdef[mk].tip_force_n[0]:f==="fy"?bdef[mk].tip_force_n[1]:bdef[mk][f];h+=`<div><label>${l}</label><input id="b_${k}_${f}" type="number" step="any" value="${v}"></div>`}h+="</div>"}
+ $("bform").innerHTML=h})();
+function readBio(){const p=BIO_DEFAULT();p.duration_s=parseFloat($("bT").value);p.samples=parseInt($("bN").value);
+ for(const[k,mk] of[["a","model_a"],["b","model_b"]]){const m=p[mk];for(const[f] of BIO_FIELDS){const v=parseFloat($(`b_${k}_${f}`).value);if(!Number.isFinite(v))throw new Error("Valor inválido em "+f);
+  if(f==="fx")m.tip_force_n[0]=v;else if(f==="fy")m.tip_force_n[1]=v;else m[f]=v}}return p}
+let lastBio=null;
+function plotLines(cv,series,title){const c=$(cv),x=c.getContext("2d"),W=c.width,H=c.height;x.clearRect(0,0,W,H);
+ const all=series.flatMap(s=>s.y),lo=Math.min(0,...all),hi=Math.max(...all),pad=(hi-lo)*0.1||1,mn=lo-pad,mx=hi+pad,t=series[0].t,T=t[t.length-1];
+ x.strokeStyle="#222C3A";x.fillStyle="#94A3B8";x.font="10px sans-serif";x.lineWidth=1;
+ for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4,yy=H-22-(v-mn)/(mx-mn)*(H-34);x.beginPath();x.moveTo(34,yy);x.lineTo(W-6,yy);x.stroke();x.fillText(v.toFixed(1),2,yy+3)}
+ x.fillText("0",34,H-8);x.fillText(T.toFixed(2)+" s",W-40,H-8);x.fillStyle="#E8EDF5";x.fillText(title,40,12);
+ for(const s of series){x.strokeStyle=s.color;x.lineWidth=2;x.beginPath();s.y.forEach((v,i)=>{const px=34+(t[i]/T)*(W-40),py=H-22-(v-mn)/(mx-mn)*(H-34);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()}}
+$("brun").onclick=()=>{try{const p=readBio(),r=bioRun(p);lastBio=r;const f=(a)=>a.map(v=>v.toPrecision(4)).join(" / ");
+ const sA=r.A.summary,sB=r.B.summary;
+ $("bout").textContent=`Torque de pico (N·m) [j1 / j2]\n A: ${f(sA.peak_abs_torque_nm)}\n B: ${f(sB.peak_abs_torque_nm)}\nTorque normalizado τ/(M·g·L)\n A: ${f(sA.peak_torque_normalized)}\n B: ${f(sB.peak_torque_normalized)}\nVel. angular de pico (rad/s)\n A: ${f(sA.peak_abs_ang_vel_rad_s)}\n B: ${f(sB.peak_abs_ang_vel_rad_s)}\nPotência de pico (W)\n A: ${f(sA.peak_abs_power_w)}\n B: ${f(sB.peak_abs_power_w)}\n\n`+r.messages.join("\n");
+ plotLines("bc1",[{t:r.A.t,y:r.A.tau[0],color:"#2389FF"},{t:r.B.t,y:r.B.tau[0],color:"#19C7D9"}],"Torque junta 1 (N·m)");
+ plotLines("bc2",[{t:r.A.t,y:r.A.tau[1],color:"#2389FF"},{t:r.B.t,y:r.B.tau[1],color:"#19C7D9"}],"Torque junta 2 (N·m)");
+ log("INFO","BIO-001 executado");for(const m of r.messages)log(m.startsWith("AVISO")?"WARN":"INFO",m)}catch(e){$("bout").textContent="Erro: "+e.message;log("ERR",e.message)}};
+$("bsaveexp").onclick=()=>{if(!proj){log("ERR","Abra ou crie um projeto antes (aba Projeto)");return}
+ if(!lastBio){log("ERR","Execute o BIO-001 antes");return}
+ const n=proj.experiments.filter(e=>e.type==="BIO-001").length+1,id="BIO-001-"+String(n).padStart(3,"0");
+ proj.experiments.push({name:"BIO-001 #"+n,id,type:"BIO-001",created:now(),params:lastBio.params,summary:{A:lastBio.A.summary,B:lastBio.B.summary,messages:lastBio.messages},results_file:null});
+ dirty=true;log("INFO","Experimento registrado: "+id+" (salve e copie o project.json)");render()};
+
+/*SIM_START*/
+const SIM_DEFAULT=()=>({name:"Cadeia de 2 segmentos (DEMONSTRATIVO)",l1:0.43,m1:7,com1:0.43,l2:0.43,m2:3.2,com2:0.43,q1_deg:-30,q2_deg:20,qd1_deg_s:0,qd2_deg_s:0,t_end_s:3,dt_s:0.001,source:SRC});
+function simRun(p){
+ for(const k of["l1","m1","l2","m2","t_end_s","dt_s"])if(!(p[k]>0))throw new Error(k+" deve ser > 0");
+ if(p.dt_s>0.01)throw new Error("dt acima de 10 ms é instável/impreciso");
+ const n=Math.round(p.t_end_s/p.dt_s);if(n>400000)throw new Error("Passos demais (> 400000) para o celular");
+ const R=Math.PI/180,l1=p.l1,m1=p.m1,m2=p.m2,a1=p.com1*l1,a2=p.com2*p.l2,I1=m1*l1*l1/12,I2=m2*p.l2*p.l2/12;
+ const accel=(q1,q2,d1,d2)=>{const c2=Math.cos(q2),M22=m2*a2*a2+I2,M12=M22+m2*l1*a2*c2,M11=m1*a1*a1+I1+m2*(l1*l1+a2*a2+2*l1*a2*c2)+I2,
+  h=-m2*l1*a2*Math.sin(q2),C1=h*(2*d1*d2+d2*d2),C2=-h*d1*d1,c1=Math.cos(q1),c12=Math.cos(q1+q2),
+  G2=m2*G*a2*c12,G1=m1*G*a1*c1+m2*G*(l1*c1+a2*c12),r1=-C1-G1,r2=-C2-G2,det=M11*M22-M12*M12;
+  return[(r1*M22-M12*r2)/det,(M11*r2-M12*r1)/det]};
+ const energy=(q1,q2,d1,d2)=>{const c2=Math.cos(q2),M22=m2*a2*a2+I2,M12=M22+m2*l1*a2*c2,M11=m1*a1*a1+I1+m2*(l1*l1+a2*a2+2*l1*a2*c2)+I2;
+  const T=0.5*(M11*d1*d1+2*M12*d1*d2+M22*d2*d2),y1=a1*Math.sin(q1),y2=l1*Math.sin(q1)+a2*Math.sin(q1+q2);return T+G*(m1*y1+m2*y2)};
+ const f=x=>{const a=accel(x[0],x[1],x[2],x[3]);return[x[2],x[3],a[0],a[1]]};
+ let x=[p.q1_deg*R,p.q2_deg*R,p.qd1_deg_s*R,p.qd2_deg_s*R],dt=p.dt_s;const E0=energy(...x);let maxd=0;
+ const stride=Math.max(1,Math.ceil((n+1)/600)),t=[],q1=[],q2=[],E=[];
+ for(let i=0;i<=n;i++){const e=energy(...x);maxd=Math.max(maxd,Math.abs(e-E0));if(i%stride===0){t.push(i*dt);q1.push(x[0]/R);q2.push(x[1]/R);E.push(e-E0)}
+  if(i===n)break;const k1=f(x),k2=f(x.map((v,j)=>v+dt/2*k1[j])),k3=f(x.map((v,j)=>v+dt/2*k2[j])),k4=f(x.map((v,j)=>v+dt*k3[j]));
+  x=x.map((v,j)=>v+dt/6*(k1[j]+2*k2[j]+2*k3[j]+k4[j]));if(!x.every(Number.isFinite))throw new Error("Integração divergiu")}
+ const scale=Math.max(Math.abs(E0),m1*G*0.1),drift=maxd/scale;
+ return{t,q1,q2,E,final:x,summary:{max_rel_energy_drift:drift,energy_initial_j:E0,energy_final_j:energy(...x),total_length_m:p.l1+p.l2,steps:n},
+  messages:["Deriva máxima de energia: "+drift.toExponential(3)+" (relativa). "+(drift<1e-4?"OK.":"AVISO: reduza dt — deriva alta."),"Parâmetros demonstrativos: resultados ilustram o método, não anatomia real."],params:p}}
+/*SIM_END*/
+const SF=[["l1","L1 (m)"],["m1","m1 (kg)"],["com1","CM1 (fração)"],["l2","L2 (m)"],["m2","m2 (kg)"],["com2","CM2 (fração)"],["q1_deg","q1 ini (°, −90=pendurado)"],["q2_deg","q2 ini (°)"],["qd1_deg_s","q̇1 ini (°/s)"],["qd2_deg_s","q̇2 ini (°/s)"],["t_end_s","Duração (s)"],["dt_s","dt (s)"]];
+const sdef=SIM_DEFAULT();$("sform").innerHTML=SF.map(([k,l])=>`<div><label>${l}</label><input id="s_${k}" type="number" step="any" value="${sdef[k]}"></div>`).join("");
+let lastSim=null;
+$("srun").onclick=()=>{try{const p=SIM_DEFAULT();for(const[k] of SF){const v=parseFloat($("s_"+k).value);if(!Number.isFinite(v))throw new Error("Valor inválido em "+k);p[k]=v}
+ $("sout").textContent="Calculando…";setTimeout(()=>{try{const r=simRun(p);lastSim=r;const s=r.summary;
+  $("sout").textContent=`Passos: ${s.steps}\nE inicial: ${s.energy_initial_j.toPrecision(6)} J\nE final: ${s.energy_final_j.toPrecision(6)} J\nDeriva relativa máx.: ${s.max_rel_energy_drift.toExponential(3)}\n\n`+r.messages.join("\n");
+  plotLines("sc1",[{t:r.t,y:r.q1,color:"#2389FF"},{t:r.t,y:r.q2,color:"#19C7D9"}],"q1 (azul) e q2 (ciano) em °");
+  plotLines("sc2",[{t:r.t,y:r.E,color:"#F5A623"}],"E − E0 (J)");log("INFO","SIM-001 concluída")}catch(e){$("sout").textContent="Erro: "+e.message;log("ERR",e.message)}},20)}catch(e){$("sout").textContent="Erro: "+e.message;log("ERR",e.message)}};
+$("ssave").onclick=()=>{if(!proj){log("ERR","Abra ou crie um projeto antes");return}if(!lastSim){log("ERR","Execute a SIM-001 antes");return}
+ const n=proj.experiments.filter(e=>e.type==="SIM-001").length+1,id="SIM-001-"+String(n).padStart(3,"0");
+ proj.experiments.push({name:"SIM-001 #"+n,id,type:"SIM-001",created:now(),params:lastSim.params,summary:{A:lastSim.summary,messages:lastSim.messages},results_file:null});
+ dirty=true;log("INFO","Experimento registrado: "+id);render()};
+
+/*LIMB_START*/
+const ANKLE_H=0.08;
+const LIMB_DEFAULT=()=>({name:"Membro inferior simplificado (DEMONSTRATIVO)",
+ segments:{pelvis:{name:"pelvis",length_m:0.18,mass_kg:8,com_frac:0.5,radius_m:0.07,source:SRC},femur:{name:"femur",length_m:0.43,mass_kg:7,com_frac:0.43,radius_m:0.05,source:SRC},
+  tibia:{name:"tibia",length_m:0.40,mass_kg:3.2,com_frac:0.43,radius_m:0.035,source:SRC},fibula:{name:"fibula",length_m:0.36,mass_kg:0.3,com_frac:0.43,radius_m:0.012,source:SRC},
+  foot:{name:"foot",length_m:0.24,mass_kg:1,com_frac:0.45,radius_m:0.03,source:SRC}},
+ joints:{hip:{name:"hip",parent:"pelvis",child:"femur",min_deg:-20,max_deg:120,description:"flexão(+)/extensão(−)"},knee:{name:"knee",parent:"femur",child:"tibia",min_deg:0,max_deg:140,description:"flexão(+)"},
+  ankle:{name:"ankle",parent:"tibia",child:"foot",min_deg:-50,max_deg:30,description:"dorsiflexão(+)/plantiflexão(−)"}},
+ angles_deg:{hip:0,knee:0,ankle:0},type:"lower_limb"});
+function limbFK(m){const R=Math.PI/180,s=m.segments,a=m.angles_deg,h=a.hip*R,k=a.knee*R,d=a.ankle*R;
+ const hip=[0,s.femur.length_m+s.tibia.length_m+ANKLE_H],th=h,knee=[hip[0]+s.femur.length_m*Math.sin(th),hip[1]-s.femur.length_m*Math.cos(th)];
+ const ts=h-k,ankle=[knee[0]+s.tibia.length_m*Math.sin(ts),knee[1]-s.tibia.length_m*Math.cos(ts)];
+ const tf=h-k+d,toe=[ankle[0]+s.foot.length_m*Math.cos(tf),ankle[1]+s.foot.length_m*Math.sin(tf)],heel=[ankle[0]-0.06*Math.cos(tf),ankle[1]-0.06*Math.sin(tf)];
+ const at=(p,q,f)=>[p[0]+(q[0]-p[0])*f,p[1]+(q[1]-p[1])*f],pts=[at(hip,knee,s.femur.com_frac),at(knee,ankle,s.tibia.com_frac),at(ankle,toe,s.foot.com_frac)],ms=[s.femur.mass_kg,s.tibia.mass_kg,s.foot.mass_kg],M=ms[0]+ms[1]+ms[2];
+ const com=[(ms[0]*pts[0][0]+ms[1]*pts[1][0]+ms[2]*pts[2][0])/M,(ms[0]*pts[0][1]+ms[1]*pts[1][1]+ms[2]*pts[2][1])/M];
+ return{hip,knee,ankle,toe,heel,com}}
+function limbSet(m,j,deg){const jd=m.joints[j];if(!jd)throw new Error("Articulação desconhecida: "+j);
+ if(!Number.isFinite(deg)||deg<jd.min_deg-1e-9||deg>jd.max_deg+1e-9)throw new Error(`${j}: ${deg}° fora dos limites [${jd.min_deg}, ${jd.max_deg}]°`);m.angles_deg[j]=deg}
+function limb3D(m){const f=limbFK(m),s=m.segments,z=[0,0,1],P=p=>[p[0],p[1],0],half=s.pelvis.length_m/2,hip=P(f.hip),knee=P(f.knee),ankle=P(f.ankle),toe=P(f.toe);
+ const off=s.tibia.radius_m+s.fibula.radius_m+0.004,L=s.fibula.length_m/s.tibia.length_m,fib0=[0,1,2].map(i=>knee[i]+(ankle[i]-knee[i])*(1-L)+(i===2?off:0)),fib1=[ankle[0],ankle[1],ankle[2]+off];
+ return{segs:{pelvis:[[hip[0],hip[1],-half],[hip[0],hip[1],half]],femur:[hip,knee],tibia:[knee,ankle],fibula:[fib0,fib1],foot:[ankle,toe]},joints:{hip,knee,ankle},com:[f.com[0],f.com[1],0]}}
+/*LIMB_END*/
+let limbIdx=-1;
+function curLimb(){return limbIdx>=0&&proj&&proj.models[limbIdx]?proj.models[limbIdx]:null}
+function drawLimb(){const m=curLimb(),c=$("mc"),x=c.getContext("2d");x.clearRect(0,0,c.width,c.height);if(!m)return;
+ const f=limbFK(m),sc=c.height/1.15,ox=c.width/2-0.15*sc,oy=c.height-18,P=p=>[ox+p[0]*sc,oy-p[1]*sc];
+ x.strokeStyle="#2a3548";x.lineWidth=2;x.beginPath();x.moveTo(0,oy);x.lineTo(c.width,oy);x.stroke();
+ const seg=(a,b,col,w)=>{x.strokeStyle=col;x.lineWidth=w;x.lineCap="round";x.beginPath();x.moveTo(...P(a));x.lineTo(...P(b));x.stroke()};
+ seg(f.hip,f.knee,"#2389FF",11);seg(f.knee,f.ankle,"#19C7D9",8);seg(f.heel,f.toe,"#E8EDF5",7);
+ x.fillStyle="#E8EDF5";for(const p of[f.hip,f.knee,f.ankle]){x.beginPath();x.arc(...P(p),6,0,7);x.fill()}
+ const cm=P(f.com);x.strokeStyle="#ff4fd8";x.setLineDash([4,4]);x.beginPath();x.moveTo(cm[0],cm[1]);x.lineTo(cm[0],oy);x.stroke();x.setLineDash([]);x.fillStyle="#ff4fd8";x.beginPath();x.arc(cm[0],cm[1],5,0,7);x.fill();
+ $("mout").textContent=`Quadril ${m.angles_deg.hip}°  Joelho ${m.angles_deg.knee}°  Tornozelo ${m.angles_deg.ankle}°\nCM do membro: x=${f.com[0].toFixed(3)} m, y=${f.com[1].toFixed(3)} m\nPonta do pé: (${f.toe[0].toFixed(3)}, ${f.toe[1].toFixed(3)}) m`}
+function buildLimbCtl(){const m=curLimb(),el=$("mctl");el.innerHTML="";if(!m)return;
+ for(const[j,l] of[["hip","Quadril (flexão +)"],["knee","Joelho (flexão +)"],["ankle","Tornozelo (dorsiflexão +)"]]){const jd=m.joints[j];
+  const d=document.createElement("div");d.innerHTML=`<label>${l} [${jd.min_deg}°, ${jd.max_deg}°]: <b id="mv_${j}">${m.angles_deg[j]}°</b></label><input type="range" id="ms_${j}" min="${jd.min_deg}" max="${jd.max_deg}" step="1" value="${m.angles_deg[j]}">`;el.appendChild(d);
+  d.querySelector("input").oninput=e=>{try{limbSet(m,j,parseFloat(e.target.value));$("mv_"+j).textContent=m.angles_deg[j]+"°";dirty=true;drawLimb();updMeta()}catch(err){log("ERR",err.message)}}}}
+$("mnew").onclick=()=>{if(!proj){log("ERR","Abra ou crie um projeto antes (aba Projeto)");return}
+ proj.models.push(LIMB_DEFAULT());limbIdx=proj.models.length-1;dirty=true;log("INFO","Modelo de membro inferior criado");render();buildLimbCtl();drawLimb()};
+function pickLimb(){limbIdx=-1;if(proj)proj.models.forEach((m,i)=>{if(m.type==="lower_limb")limbIdx=i});buildLimbCtl();drawLimb()};
+
+/*V3D_START*/
+const V3_COL={pelvis:"#8892a6",femur:"#2389FF",tibia:"#19C7D9",fibula:"#7fdde6",foot:"#E8EDF5"},V3_SEL="#F5A623";
+const V3_DEFAULT=()=>({target:[0.1,0.5,0],yaw:Math.atan2(2.1,2.6),pitch:Math.asin(0.5/Math.hypot(2.1,0.5,2.6)),dist:Math.hypot(2.1,0.5,2.6)});
+const v3sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],v3dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],v3cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],v3norm=a=>{const n=Math.hypot(...a);return[a[0]/n,a[1]/n,a[2]/n]};
+function v3Basis(c){const cp=Math.cos(c.pitch),pos=[c.target[0]+c.dist*cp*Math.sin(c.yaw),c.target[1]+c.dist*Math.sin(c.pitch),c.target[2]+c.dist*cp*Math.cos(c.yaw)],f=v3norm(v3sub(c.target,pos)),r=v3norm(v3cross(f,[0,1,0])),u=v3cross(r,f);return{pos,f,r,u}}
+function v3Project(c,W,H,p){const b=v3Basis(c),v=v3sub(p,b.pos),zc=v3dot(v,b.f);if(zc<=0.05)return null;const k=W*1.15;return[W/2+k*v3dot(v,b.r)/zc,H/2-k*v3dot(v,b.u)/zc,zc,k/zc]}
+function v3Orbit(c,dx,dy){c.yaw-=dx*0.01;c.pitch=Math.max(-1.45,Math.min(1.45,c.pitch+dy*0.01))}
+function v3Zoom(c,factor){c.dist=Math.max(0.6,Math.min(12,c.dist*factor))}
+function v3Pan(c,W,dx,dy){const b=v3Basis(c),k=c.dist/(W*1.15);for(let i=0;i<3;i++)c.target[i]+=(-dx*b.r[i]+dy*b.u[i])*k}
+function v3Pick(c,W,H,limb,m,x,y,tol){let best=null,bd=Infinity;for(const[n,[a,b]] of Object.entries(limb.segs)){const A=v3Project(c,W,H,a),B=v3Project(c,W,H,b);if(!A||!B)continue;
+ const dx=B[0]-A[0],dy=B[1]-A[1],l2=dx*dx+dy*dy,t=l2>0?Math.max(0,Math.min(1,((x-A[0])*dx+(y-A[1])*dy)/l2)):0,px=A[0]+t*dx,py=A[1]+t*dy,d=Math.hypot(x-px,y-py),rad=m.segments[n].radius_m*(A[3]+B[3])/2;
+ if(d<=Math.max(tol,rad)&&d<bd){bd=d;best=n}}return best}
+/*V3D_END*/
+/*STL_START*/
+function parseSTL(buf){const dv=new DataView(buf),len=buf.byteLength;if(len<15)throw new Error("Arquivo muito pequeno para ser um STL");let tri=null;
+ const nb=len>=84?dv.getUint32(80,true):0,isBin=len>=84&&len===84+50*nb;
+ if(isBin){if(nb===0||nb>2000000)throw new Error("Número de triângulos inválido ou acima do limite (2.000.000): "+nb);tri=new Float64Array(nb*9);
+  for(let i=0;i<nb;i++)for(let k=0;k<9;k++)tri[i*9+k]=dv.getFloat32(84+50*i+12+k*4,true)}
+ else{const txt=new TextDecoder().decode(buf);if(!/^\s*solid/i.test(txt))throw new Error("Formato não reconhecido (nem STL binário válido nem ASCII)");
+  const m=[...txt.matchAll(/vertex\s+(\S+)\s+(\S+)\s+(\S+)/g)];if(!m.length||m.length%3)throw new Error("STL ASCII inválido: número de vértices não é múltiplo de 3");
+  if(m.length/3>2000000)throw new Error("Triângulos acima do limite (2.000.000)");tri=new Float64Array(m.length*3);m.forEach((r,i)=>{for(let k=0;k<3;k++)tri[i*3+k]=Number(r[k+1])})}
+ for(const v of tri)if(!Number.isFinite(v))throw new Error("STL contém coordenadas não finitas (NaN/Inf)");
+ const map=new Map(),V=[],F=[],key=(a,b,c)=>a+","+b+","+c;
+ for(let i=0;i<tri.length/9;i++){const ids=[];for(let k=0;k<3;k++){const a=tri[i*9+k*3],b=tri[i*9+k*3+1],c=tri[i*9+k*3+2],kk=key(a,b,c);let id=map.get(kk);if(id===undefined){id=V.length;map.set(kk,id);V.push([a,b,c])}ids.push(id)}
+  if(ids[0]!==ids[1]&&ids[1]!==ids[2]&&ids[0]!==ids[2])F.push(ids)}
+ if(!F.length)throw new Error("STL sem triângulos válidos (todos degenerados)");return{V,F}}
+function stlStats(mesh,scale){const{V,F}=mesh,lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];for(const v of V)for(let k=0;k<3;k++){lo[k]=Math.min(lo[k],v[k]*scale);hi[k]=Math.max(hi[k],v[k]*scale)}
+ let area=0,vol=0;const ec=new Map();for(const f of F){const a=V[f[0]].map(x=>x*scale),b=V[f[1]].map(x=>x*scale),c=V[f[2]].map(x=>x*scale),u=v3sub(b,a),w=v3sub(c,a),cr=v3cross(u,w);area+=0.5*Math.hypot(...cr);vol+=v3dot(a,v3cross(b,c))/6;
+  for(const[p,q] of[[f[0],f[1]],[f[1],f[2]],[f[2],f[0]]]){const k=p<q?p+"_"+q:q+"_"+p;ec.set(k,(ec.get(k)||0)+1)}}
+ let closed=true;for(const n of ec.values())if(n!==2){closed=false;break}
+ return{triangles:F.length,vertices:V.length,bounds_min:lo,bounds_max:hi,area,closed,volume:closed?Math.abs(vol):null}}
+/*STL_END*/
+let stlMesh=null,stlScale=0.001;
+function drawSTL(x,W,H){if(!stlMesh)return;const{V,F}=stlMesh,step=Math.max(1,Math.ceil(F.length/4000)),L=v3norm([0.4,0.8,0.5]),tris=[];
+ for(let i=0;i<F.length;i+=step){const f=F[i],P=f.map(j=>v3Project(cam3,W,H,V[j].map(t=>t*stlScale)));if(P.some(p=>!p))continue;
+  const a=V[f[0]],b=V[f[1]],c=V[f[2]],n=v3norm(v3cross(v3sub(b,a),v3sub(c,a))),sh=0.35+0.65*Math.abs(v3dot(n,L));tris.push({P,d:(P[0][2]+P[1][2]+P[2][2])/3,sh})}
+ tris.sort((p,q)=>q.d-p.d);for(const t of tris){const g=Math.round(70+150*t.sh);x.fillStyle=`rgb(${g-20},${g},${Math.min(255,g+25)})`;x.strokeStyle=x.fillStyle;x.lineWidth=0.6;x.beginPath();x.moveTo(t.P[0][0],t.P[0][1]);x.lineTo(t.P[1][0],t.P[1][1]);x.lineTo(t.P[2][0],t.P[2][1]);x.closePath();x.fill();x.stroke()}
+ return step}
+let cam3=V3_DEFAULT(),sel3=null,show3={grid:true,axes:true,com:true};
+function draw3D(){const c=$("v3c"),x=c.getContext("2d"),W=c.width,H=c.height;x.clearRect(0,0,W,H);const m=curLimb();
+ if(!m&&stlMesh){drawSTL(x,W,H);return}
+ if(!m){x.fillStyle="#8a96a8";x.font="14px sans-serif";x.textAlign="center";x.fillText("Crie o modelo de membro inferior para ver em 3D",W/2,H/2);$("v3out").textContent="";return}
+ const L=limb3D(m),Pj=p=>v3Project(cam3,W,H,p),line=(a,b,col,w,dash)=>{const A=Pj(a),B=Pj(b);if(!A||!B)return;x.strokeStyle=col;x.lineWidth=w;x.lineCap="round";x.setLineDash(dash||[]);x.beginPath();x.moveTo(A[0],A[1]);x.lineTo(B[0],B[1]);x.stroke();x.setLineDash([])};
+ if(show3.grid)for(let i=-7;i<=7;i++){const t=i*0.1;line([-0.55,0,t],[0.85,0,t],"#2a3548",1);line([0.15+t,0,-0.7],[0.15+t,0,0.7],"#2a3548",1)}
+ if(show3.axes)for(const[d,col] of[[[0.25,0,0],"#ff5c6c"],[[0,0.25,0],"#3dd68c"],[[0,0,0.25],"#2389ff"]])line([0,0,0],d,col,3);
+ if(stlMesh)drawSTL(x,W,H);
+ const order=Object.entries(L.segs).map(([n,[a,b]])=>{const A=Pj(a),B=Pj(b);return{n,a,b,d:A&&B?(A[2]+B[2])/2:0}}).sort((p,q)=>q.d-p.d);
+ for(const o of order){const A=Pj(o.a),B=Pj(o.b);if(!A||!B)continue;const col=o.n===sel3?V3_SEL:V3_COL[o.n],w=Math.max(3,2*m.segments[o.n].radius_m*(A[3]+B[3])/2);
+  line(o.a,o.b,"#0b0f16",w+3);line(o.a,o.b,col,w);line(o.a,o.b,"rgba(255,255,255,.22)",Math.max(1,w*0.3))}
+ for(const j of["hip","knee","ankle"]){const P=Pj(L.joints[j]);if(P){x.fillStyle="#E8EDF5";x.beginPath();x.arc(P[0],P[1],Math.max(3,0.032*P[3]),0,7);x.fill()}}
+ if(show3.com){line(L.com,[L.com[0],0,L.com[2]],"#ff4fd8",2,[4,4]);const P=Pj(L.com);if(P){x.fillStyle="#ff4fd8";x.beginPath();x.arc(P[0],P[1],Math.max(3,0.022*P[3]),0,7);x.fill()}}
+ let t=`Quadril ${m.angles_deg.hip}°  Joelho ${m.angles_deg.knee}°  Tornozelo ${m.angles_deg.ankle}°\nCM do membro: x=${L.com[0].toFixed(3)} m, y=${L.com[1].toFixed(3)} m (projeção no solo tracejada)`;
+ if(sel3){const s=m.segments[sel3];t+=`\n\nSelecionado: ${sel3}\nComprimento ${s.length_m} m · massa ${s.mass_kg} kg · CM ${s.com_frac}·L\nFonte: ${s.source}`}$("v3out").textContent=t}
+function buildCtl3(){const m=curLimb(),el=$("v3ctl");el.innerHTML="";if(!m)return;
+ for(const[j,l] of[["hip","Quadril (flexão +)"],["knee","Joelho (flexão +)"],["ankle","Tornozelo (dorsiflexão +)"]]){const jd=m.joints[j],d=document.createElement("div");
+  d.innerHTML=`<label>${l} [${jd.min_deg}°, ${jd.max_deg}°]: <b id="v3v_${j}">${m.angles_deg[j]}°</b></label><input type="range" id="v3s_${j}" min="${jd.min_deg}" max="${jd.max_deg}" step="1" value="${m.angles_deg[j]}">`;el.appendChild(d);
+  d.querySelector("input").oninput=e=>{try{limbSet(m,j,parseFloat(e.target.value));$("v3v_"+j).textContent=m.angles_deg[j]+"°";dirty=true;draw3D();drawLimb();updMeta()}catch(err){log("ERR",err.message)}}}}
+(function(){const c=$("v3c"),pts=new Map();let last=null,moved=0,t0=0;
+ const xy=e=>{const r=c.getBoundingClientRect();return[(e.clientX-r.left)*c.width/(r.width||c.width),(e.clientY-r.top)*c.height/(r.height||c.height)]};
+ c.addEventListener("pointerdown",e=>{pts.set(e.pointerId,xy(e));last=null;moved=0;t0=Date.now();try{c.setPointerCapture(e.pointerId)}catch(_){}});
+ c.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;const old=pts.get(e.pointerId),n=xy(e);
+  if(pts.size===1){v3Orbit(cam3,n[0]-old[0],n[1]-old[1]);moved+=Math.abs(n[0]-old[0])+Math.abs(n[1]-old[1])}
+  else if(pts.size===2){const o=[...pts.entries()],other=o.find(([id])=>id!==e.pointerId)[1],d0=Math.hypot(old[0]-other[0],old[1]-other[1]),d1=Math.hypot(n[0]-other[0],n[1]-other[1]);if(d1>0&&d0>0)v3Zoom(cam3,d0/d1);v3Pan(cam3,c.width,(n[0]-old[0])/2,(n[1]-old[1])/2);moved+=99}
+  pts.set(e.pointerId,n);draw3D()});
+ const up=e=>{if(!pts.has(e.pointerId))return;const p=pts.get(e.pointerId);pts.delete(e.pointerId);
+  if(moved<6&&Date.now()-t0<500&&pts.size===0){const m=curLimb();if(m){sel3=v3Pick(cam3,c.width,c.height,limb3D(m),m,p[0],p[1],14);draw3D()}}};
+ c.addEventListener("pointerup",up);c.addEventListener("pointercancel",e=>pts.delete(e.pointerId));
+ c.addEventListener("wheel",e=>{e.preventDefault();v3Zoom(cam3,e.deltaY>0?1.1:0.9);draw3D()},{passive:false});
+ c.style.touchAction="none"})();
+$("v3stl").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(f.size>50*1048576)throw new Error("Arquivo acima do limite de 50 MB no celular");const mesh=parseSTL(await f.arrayBuffer());stlMesh=mesh;stlScale=parseFloat($("v3unit").value);
+  const st=stlStats(mesh,stlScale);$("v3out").textContent=`Malha STL: ${f.name}\nTriângulos ${st.triangles} · vértices ${st.vertices}\nMín (m): ${st.bounds_min.map(v=>v.toFixed(4)).join(", ")}\nMáx (m): ${st.bounds_max.map(v=>v.toFixed(4)).join(", ")}\nÁrea ${st.area.toPrecision(6)} m² · volume ${st.volume===null?"malha aberta: sem volume":st.volume.toPrecision(6)+" m³"}\n`+(st.triangles>4000?`Exibindo 1 a cada ${Math.ceil(st.triangles/4000)} triângulos (desempenho)\n`:"")+"Somente visualização: a malha não entra nos cálculos nem é salva no projeto.";
+  const lo=st.bounds_min,hi=st.bounds_max;cam3.target=[0,1,2].map(k=>(lo[k]+hi[k])/2);cam3.dist=Math.max(0.3,1.8*Math.hypot(hi[0]-lo[0],hi[1]-lo[1],hi[2]-lo[2]));log("INFO","STL carregado: "+f.name);draw3D();$("v3out").dataset.stl="1"}
+ catch(err){stlMesh=null;$("v3out").textContent="Erro ao ler STL: "+err.message;log("ERR",err.message)}};
+$("v3unit").onchange=()=>{stlScale=parseFloat($("v3unit").value);if(stlMesh)draw3D()};
+$("v3stlclear").onclick=()=>{stlMesh=null;$("v3stl").value="";cam3=V3_DEFAULT();draw3D()};
+$("v3reset").onclick=()=>{cam3=V3_DEFAULT();sel3=null;draw3D()};
+$("v3new").onclick=()=>{$("mnew").click()};
+for(const k of["grid","axes","com"])$("v3t_"+k).onchange=e=>{show3[k]=e.target.checked;draw3D()};
+const _pickLimb=pickLimb;pickLimb=function(){_pickLimb();buildCtl3();draw3D()};
+document.querySelectorAll("nav button").forEach(b=>{if(b.dataset.t==="d3")b.addEventListener("click",()=>{buildCtl3();draw3D()})});
+/*B2_START*/
+const B2_DEFAULT=()=>({duration_s:1,samples:151,
+ model_a:{name:"A — Membro inferior humano simplificado (3 seg.)",lengths_m:[0.43,0.43,0.24],masses_kg:[7,3.2,1],com_fracs:[0.43,0.43,0.45],q_start_deg:[-90,0,90],q_end_deg:[-60,60,80],joint_names:["quadril","joelho","tornozelo"],tip_force_n:[0,0],source:SRC},
+ model_b:{name:"B — Membro posterior animal simplificado (3 seg., jarrete)",lengths_m:[0.30,0.30,0.28],masses_kg:[2,0.8,0.5],com_fracs:[0.45,0.42,0.45],q_start_deg:[-90,0,0],q_end_deg:[-55,-60,40],joint_names:["quadril","joelho","jarrete"],tip_force_n:[0,0],source:SRC}});
+function chainGeo(c,q){const n=c.lengths_m.length,th=[];let s=0;for(let i=0;i<n;i++){s+=q[i];th.push(s)}
+ const pts=[[0,0]];for(let i=0;i<n;i++){const p=pts[i];pts.push([p[0]+c.lengths_m[i]*Math.cos(th[i]),p[1]+c.lengths_m[i]*Math.sin(th[i])])}
+ const com=[];for(let i=0;i<n;i++)com.push([pts[i][0]+c.com_fracs[i]*c.lengths_m[i]*Math.cos(th[i]),pts[i][1]+c.com_fracs[i]*c.lengths_m[i]*Math.sin(th[i])]);return{n,pts,com}}
+function chainMG(c,q){const g=chainGeo(c,q),n=g.n,Jv=[];
+ for(let i=0;i<n;i++){const J=[[],[]];for(let k=0;k<n;k++){if(k<=i){const r=[g.com[i][0]-g.pts[k][0],g.com[i][1]-g.pts[k][1]];J[0][k]=-r[1];J[1][k]=r[0]}else{J[0][k]=0;J[1][k]=0}}Jv.push(J)}
+ const M=Array.from({length:n},()=>Array(n).fill(0)),Gv=Array(n).fill(0);
+ for(let i=0;i<n;i++){const m=c.masses_kg[i],I=m*c.lengths_m[i]**2/12;
+  for(let a=0;a<n;a++){for(let b=0;b<n;b++){M[a][b]+=m*(Jv[i][0][a]*Jv[i][0][b]+Jv[i][1][a]*Jv[i][1][b])+(a<=i&&b<=i?I:0)}Gv[a]+=m*G*Jv[i][1][a]}}
+ return{M,G:Gv,g}}
+function chainCoriolis(c,q,qd){const n=q.length,h=1e-6,dM=[];
+ for(let k=0;k<n;k++){const qp=q.slice(),qm=q.slice();qp[k]+=h;qm[k]-=h;const Mp=chainMG(c,qp).M,Mm=chainMG(c,qm).M;dM.push(Mp.map((row,a)=>row.map((v,b)=>(v-Mm[a][b])/(2*h))))}
+ const out=[];for(let a=0;a<n;a++){let md=0,dT=0;for(let b=0;b<n;b++){let mab=0;for(let k=0;k<n;k++)mab+=dM[k][a][b]*qd[k];md+=mab*qd[b]}
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++)dT+=0.5*qd[i]*dM[a][i][j]*qd[j];out.push(md-dT)}return out}
+function chainID(c,q,qd,qdd,F){const n=q.length,{M,G:Gv,g}=chainMG(c,q),C=chainCoriolis(c,q,qd),tau=[];
+ for(let a=0;a<n;a++){let t=C[a]+Gv[a];for(let b=0;b<n;b++)t+=M[a][b]*qdd[b];tau.push(t)}
+ if(F[0]||F[1]){const tip=g.pts[n];for(let k=0;k<n;k++){const r=[tip[0]-g.pts[k][0],tip[1]-g.pts[k][1]];tau[k]-=(-r[1])*F[0]+r[0]*F[1]}}return tau}
+function b2Model(c,T,n){const R=Math.PI/180,N=c.lengths_m.length;
+ if(N<2||[c.masses_kg,c.com_fracs,c.q_start_deg,c.q_end_deg,c.joint_names].some(a=>a.length!==N))throw new Error(`[${c.name}] listas com tamanhos diferentes`);
+ if(!c.lengths_m.concat(c.masses_kg).every(v=>v>0))throw new Error(`[${c.name}] comprimentos e massas devem ser > 0`);
+ const tr=c.q_start_deg.map((s,i)=>minJerk(s*R,c.q_end_deg[i]*R,T,n)),tau=Array.from({length:N},()=>[]),pw=Array.from({length:N},()=>[]),qd=tr.map(x=>x.qd);
+ for(let i=0;i<n;i++){const q=tr.map(x=>x.q[i]),v=tr.map(x=>x.qd[i]),a=tr.map(x=>x.qdd[i]),t=chainID(c,q,v,a,c.tip_force_n);for(let k=0;k<N;k++){tau[k].push(t[k]);pw[k].push(t[k]*v[k])}}
+ const pk=a=>Math.max(...a.map(Math.abs)),M=c.masses_kg.reduce((x,y)=>x+y,0),Lt=c.lengths_m.reduce((x,y)=>x+y,0),ref=M*G*Lt,tt=tr[0].t;
+ return{name:c.name,t:tt,tau,summary:{peak_abs_torque_nm:tau.map(pk),peak_abs_ang_vel_rad_s:qd.map(pk),peak_abs_power_w:pw.map(pk),
+  work_j:pw.map(p=>{let w=0;for(let i=1;i<n;i++)w+=(p[i]+p[i-1])*(tt[i]-tt[i-1])/2;return w}),total_mass_kg:M,total_length_m:Lt,peak_torque_normalized:tau.map(x=>pk(x)/ref)}}}
+function b2Run(p){if(!(p.duration_s>0))throw new Error("duration_s deve ser > 0");if(!(Number.isInteger(p.samples)&&p.samples>=5&&p.samples<=2001))throw new Error("samples deve ser inteiro entre 5 e 2001");
+ const A=b2Model(p.model_a,p.duration_s,p.samples),B=b2Model(p.model_b,p.duration_s,p.samples),msgs=[];
+ for(const r of[A,B]){const w=Math.max(...r.summary.peak_abs_ang_vel_rad_s);if(w>20)msgs.push(`AVISO [${r.name}]: velocidade angular de pico ${w.toFixed(1)} rad/s — verifique a duração.`)}
+ msgs.push("Parâmetros demonstrativos: resultados ilustram o método, não anatomia real.");return{A,B,messages:msgs,params:p}}
+/*B2_END*/
+(function(){let h="";for(const[k,mk] of[["a","model_a"],["b","model_b"]]){const d=B2_DEFAULT()[mk];h+=`<h2 style="margin-top:12px">Modelo ${k.toUpperCase()}</h2>`;
+ for(let i=0;i<3;i++){h+=`<div class="muted" style="font-size:12px;margin-top:6px">Segmento ${i+1} (${d.joint_names[i]})</div><div class="grid" style="grid-template-columns:1fr 1fr 1fr"><div><label>L (m)</label><input id="b2_${k}_L${i}" type="number" step="any" value="${d.lengths_m[i]}"></div><div><label>m (kg)</label><input id="b2_${k}_m${i}" type="number" step="any" value="${d.masses_kg[i]}"></div><div><label>CM (fr.)</label><input id="b2_${k}_c${i}" type="number" step="any" value="${d.com_fracs[i]}"></div><div><label>q ini (°)</label><input id="b2_${k}_s${i}" type="number" step="any" value="${d.q_start_deg[i]}"></div><div><label>q fim (°)</label><input id="b2_${k}_e${i}" type="number" step="any" value="${d.q_end_deg[i]}"></div></div>`}
+ h+=`<div class="grid"><div><label>Fx ponta (N)</label><input id="b2_${k}_fx" type="number" value="0"></div><div><label>Fy ponta (N)</label><input id="b2_${k}_fy" type="number" value="0"></div></div>`}
+ $("b2form").innerHTML=h})();
+function readB2(){const p=B2_DEFAULT();p.duration_s=parseFloat($("b2T").value);p.samples=parseInt($("b2N").value);const g=id=>{const v=parseFloat($(id).value);if(!Number.isFinite(v))throw new Error("Valor inválido: "+id);return v};
+ for(const[k,mk] of[["a","model_a"],["b","model_b"]]){const m=p[mk];for(let i=0;i<3;i++){m.lengths_m[i]=g(`b2_${k}_L${i}`);m.masses_kg[i]=g(`b2_${k}_m${i}`);m.com_fracs[i]=g(`b2_${k}_c${i}`);m.q_start_deg[i]=g(`b2_${k}_s${i}`);m.q_end_deg[i]=g(`b2_${k}_e${i}`)}m.tip_force_n=[g(`b2_${k}_fx`),g(`b2_${k}_fy`)]}return p}
+let lastB2=null;
+$("b2run").onclick=()=>{try{const r=b2Run(readB2());lastB2=r;const f=a=>a.map(v=>v.toPrecision(4)).join(" / "),sA=r.A.summary,sB=r.B.summary;
+ $("b2out").textContent=`Torque de pico (N·m) [j1 / j2 / j3]\n A: ${f(sA.peak_abs_torque_nm)}\n B: ${f(sB.peak_abs_torque_nm)}\nTorque normalizado\n A: ${f(sA.peak_torque_normalized)}\n B: ${f(sB.peak_torque_normalized)}\nVel. angular de pico (rad/s)\n A: ${f(sA.peak_abs_ang_vel_rad_s)}\n B: ${f(sB.peak_abs_ang_vel_rad_s)}\nPotência de pico (W)\n A: ${f(sA.peak_abs_power_w)}\n B: ${f(sB.peak_abs_power_w)}\n\n`+r.messages.join("\n");
+ for(let k=0;k<3;k++)plotLines("b2c"+k,[{t:r.A.t,y:r.A.tau[k],color:"#2389FF"},{t:r.B.t,y:r.B.tau[k],color:"#19C7D9"}],`Torque junta ${k+1} (N·m) — azul A, ciano B`);
+ log("INFO","BIO-002 executado")}catch(e){$("b2out").textContent="Erro: "+e.message;log("ERR",e.message)}};
+$("b2save").onclick=()=>{if(!proj){log("ERR","Abra ou crie um projeto antes");return}if(!lastB2){log("ERR","Execute o BIO-002 antes");return}
+ const n=proj.experiments.filter(e=>e.type==="BIO-002").length+1,id="BIO-002-"+String(n).padStart(3,"0");
+ proj.experiments.push({name:"BIO-002 #"+n,id,type:"BIO-002",created:now(),params:lastB2.params,summary:{A:lastB2.A.summary,B:lastB2.B.summary,messages:lastB2.messages},results_file:null});
+ dirty=true;log("INFO","Experimento registrado: "+id);render()};
+/*EXO_START*/
+const EXO_DEFAULT=()=>({model:B2_DEFAULT().model_a,exo:{joint_index:1,mode:"proportional",gain:0.5,added_masses_kg:[0,1.2,0.3],actuator:{tau_stall_nm:40,omega_noload_rad_s:8,efficiency:0.7,mass_kg:1.5}},duration_s:1,samples:201});
+function exoRun(p){const c=p.model,e=p.exo,a=e.actuator,j=e.joint_index,n=c.lengths_m.length,T=p.samples;
+ if(!["proportional","gravity"].includes(e.mode))throw new Error("mode deve ser proportional ou gravity");
+ if(!(Number.isInteger(j)&&j>=0&&j<n))throw new Error(`joint_index deve estar em [0, ${n-1}]`);
+ if(!(Number.isFinite(e.gain)&&e.gain>=0))throw new Error("gain deve ser >= 0");
+ if(e.added_masses_kg.length!==n||e.added_masses_kg.some(m=>!(m>=0)))throw new Error(`added_masses_kg deve ter ${n} valores >= 0`);
+ if(!(a.tau_stall_nm>0&&a.omega_noload_rad_s>0&&a.mass_kg>=0))throw new Error("tau_stall_nm e omega_noload_rad_s devem ser > 0; mass_kg >= 0");
+ if(!(a.efficiency>0&&a.efficiency<=1))throw new Error("efficiency deve estar em (0, 1]");
+ if(!(p.duration_s>0)||!(Number.isInteger(T)&&T>=5&&T<=5001))throw new Error("duration_s > 0 e samples inteiro em [5, 5001]");
+ if(c.lengths_m.some(v=>!(v>0))||c.masses_kg.some(v=>!(v>0)))throw new Error("comprimentos e massas devem ser > 0");
+ const R=Math.PI/180,L={...c,masses_kg:c.masses_kg.map((m,i)=>m+e.added_masses_kg[i])},tr=c.q_start_deg.map((s,i)=>minJerk(s*R,c.q_end_deg[i]*R,p.duration_s,T)),t=tr[0].t;
+ const tb=[],tl=[],ex=[],hu=[],lim=[],el=[];let sat=0;
+ for(let i=0;i<T;i++){const q=tr.map(x=>x.q[i]),v=tr.map(x=>x.qd[i]),ac=tr.map(x=>x.qdd[i]);
+  const t0=chainID(c,q,v,ac,c.tip_force_n)[j],t1=chainID(L,q,v,ac,c.tip_force_n)[j],ref=e.mode==="proportional"?t1:chainMG(L,q).G[j],cmd=e.gain*ref,w=v[j];
+  const l=a.tau_stall_nm*Math.max(0,1-Math.abs(w)/a.omega_noload_rad_s),o=Math.max(-l,Math.min(l,cmd));if(Math.abs(cmd)>l+1e-12)sat++;
+  tb.push(t0);tl.push(t1);ex.push(o);hu.push(t1-o);lim.push(l);el.push(Math.max(o*w,0)/a.efficiency)}
+ const pk=x=>Math.max(...x.map(Math.abs)),rms=x=>Math.sqrt(x.reduce((s,v)=>s+v*v,0)/x.length),qdj=tr[j].qd;
+ let en=0;for(let i=1;i<T;i++)en+=(el[i]+el[i-1])*(t[i]-t[i-1])/2;
+ const bp=pk(tb),hp=pk(hu),summary={joint_index:j,mode:e.mode,gain:e.gain,baseline_peak_torque_nm:bp,loaded_peak_torque_nm:pk(tl),human_peak_torque_nm:hp,
+  baseline_rms_torque_nm:rms(tb),loaded_rms_torque_nm:rms(tl),human_rms_torque_nm:rms(hu),human_peak_reduction_vs_baseline_pct:bp>0?100*(1-hp/bp):0,
+  actuator_peak_torque_nm:pk(ex),actuator_peak_mech_power_w:pk(ex.map((o,i)=>o*qdj[i])),actuator_electrical_energy_j:en,saturation_fraction:sat/T,
+  added_mass_total_kg:e.added_masses_kg.reduce((x,y)=>x+y,0),total_length_m:c.lengths_m.reduce((x,y)=>x+y,0)};
+ const msgs=[];if(sat)msgs.push(`AVISO: atuador saturou em ${(100*sat/T).toFixed(1)}% das amostras (torque limitado pela curva torque-velocidade).`);
+ if(e.gain>1)msgs.push("AVISO: ganho > 1 (assistência acima de 100% do torque de referência).");
+ if(summary.loaded_peak_torque_nm>summary.baseline_peak_torque_nm)msgs.push("Nota: a massa do exoesqueleto aumenta o torque requerido da junta (efeito incluído no cálculo).");
+ msgs.push("Parâmetros demonstrativos: resultados ilustram o método, sem validade para dispositivos reais.");
+ return{A:{t,tau_baseline:tb,tau_loaded:tl,tau_exo:ex,tau_human:hu,tau_limit:lim,summary},messages:msgs,params:p}}
+/*EXO_END*/
+(function(){const d=EXO_DEFAULT(),f=(id,l,v,st)=>`<div><label>${l}</label><input id="${id}" type="number" step="${st||"any"}" value="${v}"></div>`;
+ $("exform").innerHTML=`<div class="grid"><div><label>Junta assistida</label><select id="ex_j">${d.model.joint_names.map((n,i)=>`<option value="${i}"${i===d.exo.joint_index?" selected":""}>${i+1}: ${n}</option>`).join("")}</select></div><div><label>Modo</label><select id="ex_mode"><option value="proportional">proportional</option><option value="gravity">gravity</option></select></div>${f("ex_gain","Ganho (fração)",d.exo.gain)}${f("ex_T","Duração (s)",d.duration_s)}${f("ex_N","Amostras",d.samples,1)}</div>
+ <div class="grid" style="grid-template-columns:1fr 1fr 1fr">${d.exo.added_masses_kg.map((m,i)=>f("ex_m"+i,`Massa seg. ${i+1} (kg)`,m)).join("")}</div>
+ <div class="grid" style="grid-template-columns:1fr 1fr 1fr">${f("ex_tau","τ bloqueio (N·m)",d.exo.actuator.tau_stall_nm)}${f("ex_w0","ω sem carga (rad/s)",d.exo.actuator.omega_noload_rad_s)}${f("ex_eff","Eficiência η",d.exo.actuator.efficiency)}</div>`})();
+function readExo(){const p=EXO_DEFAULT(),g=id=>{const v=parseFloat($(id).value);if(!Number.isFinite(v))throw new Error("Valor inválido: "+id);return v};
+ p.exo.joint_index=parseInt($("ex_j").value);p.exo.mode=$("ex_mode").value;p.exo.gain=g("ex_gain");p.duration_s=g("ex_T");p.samples=parseInt($("ex_N").value);
+ p.exo.added_masses_kg=[0,1,2].map(i=>g("ex_m"+i));p.exo.actuator.tau_stall_nm=g("ex_tau");p.exo.actuator.omega_noload_rad_s=g("ex_w0");p.exo.actuator.efficiency=g("ex_eff");return p}
+let lastExo=null;
+$("exrun").onclick=()=>{try{const r=exoRun(readExo());lastExo=r;const s=r.A.summary,a=r.A;
+ $("exout").textContent=`Pico sem exo: ${s.baseline_peak_torque_nm.toPrecision(4)} N·m\nPico com exo, sem assist.: ${s.loaded_peak_torque_nm.toPrecision(4)} N·m\nPico humano com assistência: ${s.human_peak_torque_nm.toPrecision(4)} N·m (${s.human_peak_reduction_vs_baseline_pct.toPrecision(3)}% vs sem exo)\nAtuador: pico ${s.actuator_peak_torque_nm.toPrecision(4)} N·m, ${s.actuator_peak_mech_power_w.toPrecision(4)} W\nEnergia elétrica: ${s.actuator_electrical_energy_j.toPrecision(4)} J | saturação ${(100*s.saturation_fraction).toFixed(1)}%\n\n`+r.messages.join("\n");
+ plotLines("exc0",[{t:a.t,y:a.tau_baseline,color:"#8a96a8"},{t:a.t,y:a.tau_loaded,color:"#19C7D9"},{t:a.t,y:a.tau_human,color:"#2389FF"}],"Torque da junta (N·m) — cinza sem exo, ciano com exo, azul humano");
+ plotLines("exc1",[{t:a.t,y:a.tau_exo,color:"#ffb020"},{t:a.t,y:a.tau_limit,color:"#4a5568"}],"Atuador (N·m) — laranja, limite τ-ω em cinza");
+ log("INFO","EXO-001 executado")}catch(e){$("exout").textContent="Erro: "+e.message;log("ERR",e.message)}};
+$("exsave").onclick=()=>{if(!proj){log("ERR","Abra ou crie um projeto antes");return}if(!lastExo){log("ERR","Execute o EXO-001 antes");return}
+ const n=proj.experiments.filter(e=>e.type==="EXO-001").length+1,id="EXO-001-"+String(n).padStart(3,"0");
+ proj.experiments.push({name:"EXO-001 #"+n,id,type:"EXO-001",created:now(),params:lastExo.params,summary:{A:lastExo.A.summary,messages:lastExo.messages},results_file:null});
+ dirty=true;log("INFO","Experimento registrado: "+id);render()};
+/*B3_START*/
+const B3_DOF=["quadril_flexao","quadril_abducao","quadril_rotacao","joelho_flexao","tornozelo_dorsiflexao","tornozelo_inversao"];
+const B3_DEFAULT=()=>({segments:{femur:{length_m:0.43,mass_kg:7,com_frac:0.43},tibia:{length_m:0.40,mass_kg:3.2,com_frac:0.43},foot:{length_m:0.24,mass_kg:1,com_frac:0.45}},
+ limits_deg:[[-20,120],[-30,40],[-35,35],[0,140],[-50,30],[-20,20]],q0_deg:[20,5,0,30,0,0],qd0_deg_s:[0,0,0,0,0,0],gravity_m_s2:[0,-9.80665,0],
+ tau_const_nm:[0,0,0,0,0,0],tau_amp_nm:[0,0,0,0,0,0],tau_freq_hz:[1,1,1,1,1,1],duration_s:0.5,dt_s:0.002,method:"rk4",source:SRC});
+const b3mm=(A,B)=>A.map(r=>[0,1,2].map(j=>r[0]*B[0][j]+r[1]*B[1][j]+r[2]*B[2][j])),b3mv=(A,v)=>A.map(r=>r[0]*v[0]+r[1]*v[1]+r[2]*v[2]),b3tr=A=>[0,1,2].map(i=>[A[0][i],A[1][i],A[2][i]]);
+const b3add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],b3cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],b3dt=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+function b3Rot(ax,a){const n=Math.hypot(...ax),x=ax[0]/n,y=ax[1]/n,z=ax[2]/n,c=Math.cos(a),s=Math.sin(a),k=1-c;
+ return[[c+x*x*k,x*y*k-z*s,x*z*k+y*s],[y*x*k+z*s,c+y*y*k,y*z*k-x*s],[z*x*k-y*s,z*y*k+x*s,c+z*z*k]]}
+function b3Cyl(m,L,r,ax){const ia=0.5*m*r*r,it=m*(3*r*r+L*L)/12,d=[it,it,it];d[ax]=ia;return[[d[0],0,0],[0,d[1],0],[0,0,d[2]]]}
+function b3Chain(p){const lf=p.segments.femur.length_m,lt=p.segments.tibia.length_m,lfib=0.36,off=0.035+0.012+0.004,sf=p.segments.femur,st=p.segments.tibia,so=p.segments.foot;
+ const body=(id,parent,origin,axes,L,m,cf,r,ax)=>({id,parent,origin,axes,mass:m,com:ax===1?[0,-cf*L,0]:[cf*L,0,0],I:b3Cyl(m,L,r,ax),L});
+ const bodies=[body("femur","pelvis",[0,0,0],[[0,0,1],[1,0,0],[0,1,0]],lf,sf.mass_kg,sf.com_frac,0.05,1),
+  body("tibia","femur",[0,-lf,0],[[0,0,-1]],lt,st.mass_kg,st.com_frac,0.035,1),
+  body("fibula","tibia",[0,-(lt-lfib),off],[],lfib,0.3,0.43,0.012,1),
+  body("foot","tibia",[0,-lt,0],[[0,0,1],[1,0,0]],so.length_m,so.mass_kg,so.com_frac,0.03,0)];
+ let k=0;for(const b of bodies){b.own=[];for(let i=0;i<b.axes.length;i++)b.own.push(k++)}
+ const by={};for(const b of bodies)by[b.id]=b;
+ for(const b of bodies)b.path=(b.parent==="pelvis"?[]:by[b.parent].path).concat(b.own);
+ return{bodies,by,base:[0,lf+lt+0.08,0],n:6,lf,lt}}
+const b3Id=()=>[[1,0,0],[0,1,0],[0,0,1]];
+function b3FK(ch,q){const T={pelvis:{R:b3Id(),p:ch.base}},axis=[],orig=[];
+ for(const b of ch.bodies){const P=T[b.parent];let R=P.R,p=b3add(P.p,b3mv(P.R,b.origin));
+  b.own.forEach((k,i)=>{axis[k]=b3mv(R,b.axes[i]);orig[k]=p;R=b3mm(R,b3Rot(b.axes[i],q[k]))});T[b.id]={R,p}}
+ return{T,axis,orig}}
+const b3W=(fk,b,pl)=>b3add(fk.T[b.id].p,b3mv(fk.T[b.id].R,pl));
+function b3J(ch,fk,b,pw){const Jv=[[],[],[]],Jw=[[],[],[]];for(let k=0;k<6;k++){let v=[0,0,0],w=[0,0,0];if(b.path.includes(k)){const z=fk.axis[k];v=b3cr(z,[pw[0]-fk.orig[k][0],pw[1]-fk.orig[k][1],pw[2]-fk.orig[k][2]]);w=z}
+ for(let r=0;r<3;r++){Jv[r][k]=v[r];Jw[r][k]=w[r]}}return[Jv,Jw]}
+function b3JtV(J,v){return[0,1,2,3,4,5].map(k=>J[0][k]*v[0]+J[1][k]*v[1]+J[2][k]*v[2])}
+function b3Mass(ch,q){const fk=b3FK(ch,q),M=Array.from({length:6},()=>new Array(6).fill(0));
+ for(const b of ch.bodies){const[Jv,Jw]=b3J(ch,fk,b,b3W(fk,b,b.com)),R=fk.T[b.id].R,Iw=b3mm(b3mm(R,b.I),b3tr(R));
+  const IJ=Iw.map(r=>[0,1,2,3,4,5].map(k=>r[0]*Jw[0][k]+r[1]*Jw[1][k]+r[2]*Jw[2][k]));
+  for(let i=0;i<6;i++)for(let j=0;j<6;j++)M[i][j]+=b.mass*(Jv[0][i]*Jv[0][j]+Jv[1][i]*Jv[1][j]+Jv[2][i]*Jv[2][j])+Jw[0][i]*IJ[0][j]+Jw[1][i]*IJ[1][j]+Jw[2][i]*IJ[2][j]}
+ for(let i=0;i<6;i++)for(let j=i+1;j<6;j++){const a=0.5*(M[i][j]+M[j][i]);M[i][j]=a;M[j][i]=a}return M}
+function b3Grav(ch,q,g){const fk=b3FK(ch,q),Gq=new Array(6).fill(0);for(const b of ch.bodies){const[Jv]=b3J(ch,fk,b,b3W(fk,b,b.com)),t=b3JtV(Jv,g);for(let k=0;k<6;k++)Gq[k]-=b.mass*t[k]}return Gq}
+function b3Cor(ch,q,qd){const s=Math.max(...qd.map(Math.abs));if(s<1e-14)return new Array(6).fill(0);const st=1e-6/s,qp=q.map((v,i)=>v+st*qd[i]),qm=q.map((v,i)=>v-st*qd[i]),f0=b3FK(ch,q),fp=b3FK(ch,qp),fm=b3FK(ch,qm),out=new Array(6).fill(0);
+ const mul=(J,v)=>[0,1,2].map(r=>J[r].reduce((a,x,k)=>a+x*v[k],0));
+ for(const b of ch.bodies){const[Jv,Jw]=b3J(ch,f0,b,b3W(f0,b,b.com)),[Jvp,Jwp]=b3J(ch,fp,b,b3W(fp,b,b.com)),[Jvm,Jwm]=b3J(ch,fm,b,b3W(fm,b,b.com));
+  const ab=mul(Jvp,qd).map((v,i)=>(v-mul(Jvm,qd)[i])/(2*st)),alb=mul(Jwp,qd).map((v,i)=>(v-mul(Jwm,qd)[i])/(2*st)),R=f0.T[b.id].R,Iw=b3mm(b3mm(R,b.I),b3tr(R)),w=mul(Jw,qd),Iww=b3mv(Iw,w);
+  const tv=b3JtV(Jv,ab.map(v=>b.mass*v)),a2=b3add(b3mv(Iw,alb),b3cr(w,Iww)),tw=b3JtV(Jw,a2);for(let k=0;k<6;k++)out[k]+=tv[k]+tw[k]}return out}
+function b3Solve(A,b){const n=b.length,M=A.map((r,i)=>r.concat([b[i]]));for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;if(Math.abs(M[p][c])<1e-300)throw new Error("Matriz de massa singular");[M[c],M[p]]=[M[p],M[c]];
+ for(let r=c+1;r<n;r++){const f=M[r][c]/M[c][c];for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k]}}
+ const x=new Array(n).fill(0);for(let i=n-1;i>=0;i--){let s=M[i][n];for(let k=i+1;k<n;k++)s-=M[i][k]*x[k];x[i]=s/M[i][i]}return x}
+function b3Fwd(ch,q,qd,tau,g){const c=b3Cor(ch,q,qd),G_=b3Grav(ch,q,g);return b3Solve(b3Mass(ch,q),tau.map((t,i)=>t-c[i]-G_[i]))}
+function b3Energy(ch,q,qd,g){const M=b3Mass(ch,q),Mq=M.map(r=>r.reduce((a,x,k)=>a+x*qd[k],0)),fk=b3FK(ch,q);let pe=0;for(const b of ch.bodies)pe-=b.mass*b3dt(g,b3W(fk,b,b.com));return[0.5*qd.reduce((a,x,k)=>a+x*Mq[k],0),pe]}
+function b3Validate(p){const segs=["femur","tibia","foot"];for(const k of segs){const s=p.segments[k];if(!s||!(s.length_m>0&&s.mass_kg>0&&s.com_frac>=0&&s.com_frac<=1))throw new Error("Segmento inválido: "+k)}
+ for(const k of["q0_deg","qd0_deg_s","tau_const_nm","tau_amp_nm","tau_freq_hz"])if(!Array.isArray(p[k])||p[k].length!==6||!p[k].every(Number.isFinite))throw new Error(k+" deve ter 6 valores finitos");
+ for(let i=0;i<6;i++){const[lo,hi]=p.limits_deg[i];if(!(lo<hi))throw new Error("limits_deg: mín < máx");if(p.q0_deg[i]<lo-1e-9||p.q0_deg[i]>hi+1e-9)throw new Error(`Pose inicial: ${B3_DOF[i]} = ${p.q0_deg[i]}° fora dos limites [${lo}, ${hi}]°`)}
+ if(p.tau_freq_hz.some(f=>f<0))throw new Error("frequências devem ser ≥ 0");
+ if(!(p.duration_s>0&&p.dt_s>0&&p.dt_s<=p.duration_s))throw new Error("duração e passo devem ser > 0, com passo ≤ duração");
+ if(p.duration_s/p.dt_s>50000)throw new Error("Passos demais (> 50000) para o celular; aumente dt");if(p.method!=="rk4")throw new Error("No celular só RK4 está disponível")}
+function b3Run(p){b3Validate(p);const R=Math.PI/180,ch=b3Chain(p),g=p.gravity_m_s2,n=Math.round(p.duration_s/p.dt_s),dt=p.dt_s,q0=p.q0_deg.map(v=>v*R),qd0=p.qd0_deg_s.map(v=>v*R);
+ const tauF=t=>p.tau_const_nm.map((c,i)=>c+p.tau_amp_nm[i]*Math.sin(2*Math.PI*p.tau_freq_hz[i]*t));
+ const f=(t,x)=>{const q=x.slice(0,6),qd=x.slice(6);return qd.concat(b3Fwd(ch,q,qd,tauF(t),g))};
+ let x=q0.concat(qd0);const X=[x],t=[0];
+ for(let i=0;i<n;i++){const ti=i*dt,k1=f(ti,x),k2=f(ti+dt/2,x.map((v,j)=>v+dt/2*k1[j])),k3=f(ti+dt/2,x.map((v,j)=>v+dt/2*k2[j])),k4=f(ti+dt,x.map((v,j)=>v+dt*k3[j]));
+  x=x.map((v,j)=>v+dt/6*(k1[j]+2*k2[j]+2*k3[j]+k4[j]));if(!x.every(Number.isFinite)||Math.max(...x.slice(6).map(Math.abs))>1e4)throw new Error(`Divergência numérica em t = ${((i+1)*dt).toPrecision(5)} s; reduza o passo`);X.push(x);t.push((i+1)*dt)}
+ const N=X.length,Q=X.map(r=>r.slice(0,6)),QD=X.map(r=>r.slice(6)),QDD=[],TAU=[],KE=[],PE=[],ME=[];let viol=0,first=null;
+ for(let i=0;i<N;i++){const tau=tauF(t[i]);TAU.push(tau);QDD.push(b3Fwd(ch,Q[i],QD[i],tau,g));const[ke,pe]=b3Energy(ch,Q[i],QD[i],g);KE.push(ke);PE.push(pe);ME.push(ke+pe);
+  const bad=Q[i].some((v,k)=>v<p.limits_deg[k][0]*R-1e-9||v>p.limits_deg[k][1]*R+1e-9);if(bad){viol++;if(first===null)first=t[i]}}
+ const pw=TAU.map((tr,i)=>tr.map((v,k)=>v*QD[i][k])),ptot=pw.map(r=>r.reduce((a,b)=>a+b,0));let W=0;for(let i=0;i<N-1;i++)W+=0.5*(ptot[i+1]+ptot[i])*(t[i+1]-t[i]);
+ const dE=ME[N-1]-ME[0],drift=Math.max(...ME.map(e=>Math.abs(e-ME[0]))),pt=Math.max(...PE)-Math.min(...PE),sc=Math.max(Math.abs(ME[0]),pt,Math.max(...KE),1e-12);
+ const pk=(A,k)=>Math.max(...A.map(r=>Math.abs(r[k]))),peaks=A=>[0,1,2,3,4,5].map(k=>pk(A,k)),cons=!(p.tau_const_nm.some(v=>v!==0)||p.tau_amp_nm.some(v=>v!==0));
+ const fkE=b3FK(ch,Q[N-1]),tip=b3W(fkE,ch.by.foot,[ch.by.foot.L,0,0]),msgs=["Parâmetros demonstrativos: resultados ilustram o método, não anatomia real nem precisão clínica.",
+  "Simplificações mecânicas: quadril 3 DOF rotacionais, joelho 1 DOF, tornozelo 2 DOFs; sem músculos, ligamentos, contato ou atrito."];
+ if(viol)msgs.push(`AVISO: limite articular excedido em ${viol} amostras (primeiro em t=${first.toPrecision(4)} s). O motor NÃO impõe os limites na dinâmica.`);
+ if(cons&&drift/sc>1e-3)msgs.push("AVISO: deriva de energia relativa "+(drift/sc).toExponential(2)+" > 1e-3; reduza o passo.");
+ return{t,Q,QD,QDD,TAU,KE,PE,ME,ch,params:p,messages:msgs,summary:{samples:N,method:"rk4",dt_s:dt,conservative_run:cons,energy_initial_j:ME[0],energy_final_j:ME[N-1],energy_drift_rel:drift/sc,work_torques_j:W,delta_energy_j:dE,work_energy_residual_j:Math.abs(W-dE),
+  peak_abs_ang_vel_rad_s:peaks(QD),peak_abs_ang_acc_rad_s2:peaks(QDD),peak_abs_torque_nm:peaks(TAU),peak_abs_power_w:peaks(pw),ke_max_j:Math.max(...KE),pe_range_j:pt,limit_violations:viol,foot_tip_final_m:tip}}}
+function b3Segs(r,i){const ch=r.ch,fk=b3FK(ch,r.Q[i]),F=ch.by.femur,Ti=ch.by.tibia,Fo=ch.by.foot,h=fk.T.femur.p;
+ return{pelvis:[[h[0],h[1],-0.09],[h[0],h[1],0.09]],femur:[h,b3W(fk,F,[0,-ch.lf,0])],tibia:[fk.T.tibia.p,b3W(fk,Ti,[0,-ch.lt,0])],foot:[fk.T.foot.p,b3W(fk,Fo,[Fo.L,0,0])],com:b3W(fk,F,F.com)}}
+/*B3_END*/
+/*HIST_START*/
+function flattenMetrics(summary){const out={};(function walk(p,v){if(typeof v==="boolean")return;if(typeof v==="number"){if(Number.isFinite(v))out[p]=v}
+ else if(Array.isArray(v))v.forEach((x,i)=>walk(`${p}[${i}]`,x));else if(v&&typeof v==="object")for(const[k,x] of Object.entries(v))walk(p?`${p}.${k}`:k,x)})("",summary);return out}
+function histQuery(exps,type,metric,desc){let rows=exps.filter(e=>!type||e.type===type).map((e,i)=>({id:e.id,type:e.type,name:e.name,created:e.created,i,value:metric?(flattenMetrics(e.summary)[metric]??null):null}));
+ rows.sort((a,b)=>{if(metric){if((a.value===null)!==(b.value===null))return a.value===null?1:-1;if(a.value!==b.value)return desc?b.value-a.value:a.value-b.value}
+  return a.created<b.created?-1:a.created>b.created?1:a.id<b.id?-1:a.id>b.id?1:0});return rows}
+function histMetricNames(exps,type){const s=new Set();exps.filter(e=>!type||e.type===type).forEach(e=>Object.keys(flattenMetrics(e.summary)).forEach(k=>s.add(k)));return[...s].sort()}
+/*HIST_END*/
+function drawHist(keepMetric){const el=$("h_out");if(!proj){el.textContent="Abra ou crie um projeto.";return}
+ const exps=proj.experiments,ts=[...new Set(exps.map(e=>e.type))].sort(),tsel=$("h_type"),cur=tsel.value;
+ tsel.innerHTML='<option value="">(todos)</option>'+ts.map(t=>`<option value="${t}">${t}</option>`).join("");tsel.value=ts.includes(cur)?cur:"";
+ const msel=$("h_metric"),curm=keepMetric?msel.value:"";msel.innerHTML='<option value="">(nenhuma)</option>'+histMetricNames(exps,tsel.value).map(k=>`<option value="${k}">${k}</option>`).join("");msel.value=[...msel.options].some(o=>o.value===curm)?curm:"";
+ const rows=histQuery(exps,tsel.value,msel.value,$("h_ord").value==="desc");
+ el.textContent=rows.length?rows.map(r=>`${r.id}  ${r.type}  ${r.created}${msel.value?"  "+(r.value===null?"—":r.value.toPrecision(6)):""}`).join("\n")+`\n\n${rows.length} experimento(s)`:"Nenhum experimento registrado."}
+$("h_type").onchange=()=>drawHist(false);$("h_metric").onchange=()=>drawHist(true);$("h_ord").onchange=()=>drawHist(true);
+document.querySelectorAll("nav button").forEach(b=>{if(b.dataset.t==="hist")b.addEventListener("click",()=>drawHist(true))});
+
+const B3_ROWS=[["q0_deg","q0 (°)"],["qd0_deg_s","q̇0 (°/s)"],["tau_const_nm","τ const (N·m)"],["tau_amp_nm","τ amp (N·m)"],["tau_freq_hz","f (Hz)"]];
+const b3def=B3_DEFAULT();
+$("b3form").innerHTML=B3_ROWS.map(([k,l])=>`<h2 style="margin-top:10px">${l}</h2><div class="grid">`+B3_DOF.map((n,i)=>`<div><label>${n}</label><input id="b3_${k}_${i}" type="number" step="any" value="${b3def[k][i]}"></div>`).join("")+"</div>").join("")
+ +`<div class="grid"><div><label>Duração (s)</label><input id="b3_dur" type="number" step="any" value="${b3def.duration_s}"></div><div><label>Passo dt (s)</label><input id="b3_dt" type="number" step="any" value="${b3def.dt_s}"></div></div>`;
+function readB3(){const p=B3_DEFAULT();for(const[k] of B3_ROWS)p[k]=B3_DOF.map((_,i)=>parseFloat($(`b3_${k}_${i}`).value));p.duration_s=parseFloat($("b3_dur").value);p.dt_s=parseFloat($("b3_dt").value);return p}
+let lastB3=null,b3Cam=V3_DEFAULT(),b3Timer=null;
+function b3Draw(i){const r=lastB3;if(!r)return;const c=$("b3c3"),x=c.getContext("2d"),W=c.width,H=c.height;x.clearRect(0,0,W,H);const s=b3Segs(r,i),cam=b3Cam;
+ const line=(a,b,col,w)=>{const A=v3Project(cam,W,H,a),B=v3Project(cam,W,H,b);if(!A||!B)return;x.strokeStyle=col;x.lineWidth=w;x.lineCap="round";x.beginPath();x.moveTo(A[0],A[1]);x.lineTo(B[0],B[1]);x.stroke()};
+ line([-0.5,0,0],[0.7,0,0],"#2a3548",2);line([0,0,-0.5],[0,0,0.5],"#2a3548",2);line(s.pelvis[0],s.pelvis[1],V3_COL.pelvis,9);line(...s.femur,V3_COL.femur,10);line(...s.tibia,V3_COL.tibia,8);line(...s.foot,V3_COL.foot,6);
+ const cm=v3Project(cam,W,H,s.com);if(cm){x.fillStyle="#ff4fd8";x.beginPath();x.arc(cm[0],cm[1],5,0,7);x.fill()}
+ $("b3t").textContent=`t = ${r.t[i].toFixed(3)} s  ·  E = ${r.ME[i].toFixed(4)} J`}
+$("b3run").onclick=()=>{try{const p=readB3();$("b3out").textContent="Calculando…";setTimeout(()=>{try{const r=b3Run(p);lastB3=r;const s=r.summary;
+ $("b3out").textContent=`Amostras: ${s.samples} · RK4 · dt = ${s.dt_s} s\nE mecânica: ${s.energy_initial_j.toPrecision(6)} → ${s.energy_final_j.toPrecision(6)} J (deriva rel. ${s.energy_drift_rel.toExponential(3)}${s.conservative_run?"":"; com torques não se espera conservação"})\nTrabalho dos torques ${s.work_torques_j.toPrecision(6)} J vs ΔE ${s.delta_energy_j.toPrecision(6)} J\n\n`+r.messages.join("\n");
+ const cols=["#2389FF","#19C7D9","#F5A623","#3dd68c","#ff5c6c","#c792ea"];
+ plotLines("b3c1",B3_DOF.map((_,k)=>({t:r.t,y:r.Q.map(q=>q[k]*180/Math.PI),color:cols[k]})),"Ângulos (°) — 6 DOFs");
+ plotLines("b3c2",[{t:r.t,y:r.KE,color:"#2389FF"},{t:r.t,y:r.PE,color:"#19C7D9"},{t:r.t,y:r.ME,color:"#F5A623"}],"Energia (J): cinética, potencial, mecânica");
+ $("b3sl").max=r.t.length-1;$("b3sl").value=0;$("b3sl").disabled=false;$("b3play").disabled=false;b3Draw(0);log("INFO","BIO-003 concluído");for(const m of r.messages)log(m.startsWith("AVISO")?"WARN":"INFO",m)}catch(e){$("b3out").textContent="Erro: "+e.message;log("ERR",e.message)}},20)}catch(e){$("b3out").textContent="Erro: "+e.message;log("ERR",e.message)}};
+$("b3sl").oninput=()=>b3Draw(parseInt($("b3sl").value));
+$("b3play").onclick=()=>{if(b3Timer){clearInterval(b3Timer);b3Timer=null;$("b3play").textContent="▶ Reproduzir";return}if(!lastB3)return;
+ const sl=$("b3sl");if(parseInt(sl.value)>=lastB3.t.length-1)sl.value=0;let last=performance.now(),tt=lastB3.t[parseInt(sl.value)];$("b3play").textContent="⏸ Pausar";
+ b3Timer=setInterval(()=>{const now_=performance.now();tt+=(now_-last)/1000;last=now_;let i=lastB3.t.findIndex(v=>v>=tt);if(i<0){i=lastB3.t.length-1;clearInterval(b3Timer);b3Timer=null;$("b3play").textContent="▶ Reproduzir"}sl.value=i;b3Draw(i)},33)};
+$("b3save").onclick=()=>{if(!proj){log("ERR","Abra ou crie um projeto antes");return}if(!lastB3){log("ERR","Execute o BIO-003 antes");return}
+ const n=proj.experiments.filter(e=>e.type==="BIO-003").length+1,id="BIO-003-"+String(n).padStart(3,"0");
+ proj.experiments.push({name:"BIO-003 #"+n,id,type:"BIO-003",created:now(),params:lastB3.params,summary:{A:lastB3.summary,messages:lastB3.messages},results_file:null});
+ dirty=true;log("INFO","Experimento registrado: "+id);render()};
+log("INFO","NEXUS BIOMECHANICS mobile v1.1.0 iniciado");
+try{const s=localStorage.getItem("nexus_proj");if(s){proj=validate(JSON.parse(s));log("INFO","Projeto restaurado: "+proj.name)}}catch(e){}
+render();
+</script>
+</body>
+</html>

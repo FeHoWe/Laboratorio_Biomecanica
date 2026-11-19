@@ -1,15 +1,15 @@
-# NEXUS BIOMECHANICS — v1.0.0-rc1 (release candidate)
+# NEXUS BIOMECHANICS — v1.1.0
 
 Plataforma de pesquisa e aprendizado computacional em biomecânica (Windows 11, Python + PySide6, tema escuro, PT-BR).
 **Não é dispositivo médico e não faz afirmações de precisão clínica.** Todos os parâmetros padrão (comprimentos, massas, limites articulares, atuador) são **DEMONSTRATIVOS** (hipotéticos, sem fonte científica verificada) até que você informe fontes.
 
-Execução: `python main.py` · Testes: `python -m pytest` (127 testes) · Instalação: veja `INSTALLATION.md`.
+Execução: `python main.py` · Testes: `python -m pytest` (209 testes; ~2,5 min) · Instalação: veja `INSTALLATION.md`.
 
 ---
 
-## O que existe hoje (v1.0.0-rc1)
+## O que existe hoje (v1.1.0)
 
-> Esta é uma *release candidate*: toda a funcionalidade planejada que dá para construir e testar aqui está pronta, mas **a 1.0.0 final depende de itens que não consegui verificar** (veja `ACCEPTANCE.md`).
+> Versão 1.1.0 a pedido do autor. **Continuam não verificados** (veja `ACCEPTANCE.md`): `.exe` no Windows, clique 3D, toque no celular, fontes científicas dos parâmetros; OpenSim não implementado.
 
 | Módulo | Onde | O que faz |
 |---|---|---|
@@ -23,19 +23,24 @@ Execução: `python main.py` · Testes: `python -m pytest` (127 testes) · Insta
 | Importação de STL | Modelo → Importar malha STL… | Lê STL binário/ASCII (validação, soldagem de vértices, limites defensivos), pede a unidade (mm/cm/m/in), copia para `models/`, mostra triângulos, caixa limite, área e volume (só se a malha for fechada) e renderiza no 3D. Geometria **apenas visual**: não entra nos cálculos. |
 | Análise por IA (arquitetura) | Análise | Contratos e registro de provedores com rótulo obrigatório "gerado por IA", procedência e limitações. **Nenhum provedor incluído**: o item de menu fica desabilitado até haver um. |
 | Histórico SQLite | Pesquisa → Histórico (Ctrl+H) | Índice `history.db` (derivado do `project.json`): filtrar por tipo e ordenar por qualquer métrica do resumo. |
-| Versão celular | Artefato web | Página única com Projeto, Árvore, Cinemática, Modelo 2D, **3D (com STL somente visualização)**, BIO-001, BIO-002, EXO-001, SIM-001, **Histórico** e Console. Projetos do celular abrem no desktop. |
+| BIO-003 (3D espacial) | Pesquisa (Ctrl+Alt+B) | Dinâmica espacial do membro inferior (quadril 3 DOF, joelho 1, tornozelo 2): tabelas de segmentos/DOFs, RK4 ou adaptativo em thread, gráficos de ângulo/velocidade/aceleração/torque/potência/energias, animação 3D com play/pause/velocidade/câmeras, CSV/.md/PNG/PDF. Detalhes em `SPATIAL_ENGINE.md`. |
+| MuJoCo (opcional) | Simulação → Comparar último BIO-003 com MuJoCo | Compara com o motor interno (dinâmica livre). Só aparece útil se `pip install mujoco`. |
+| Versão celular | Artefato web | Página única com Projeto, Árvore, Cinemática, Modelo 2D, **3D (com STL somente visualização)**, BIO-001, BIO-002, **BIO-003**, EXO-001, SIM-001, **Histórico** e Console. Projetos do celular abrem no desktop. |
 
 Experimentos ficam salvos no projeto e são **reexecutáveis de forma determinística**.
 
 ### Limitações atuais (reais)
-- Parâmetros demonstrativos; sem validação experimental. Modelos 2D no plano sagital, sem músculos, atrito, folgas ou contato com solo. Sem controle em malha fechada no exoesqueleto.
+- Parâmetros demonstrativos; sem validação experimental. Modelos sem músculos (BIO-001/002/EXO-001 são 2D sagitais; BIO-003 é 3D com simplificações mecânicas), atrito, folgas ou contato com solo. Sem controle em malha fechada no exoesqueleto.
 - Não verificado: execução e `.exe` no Windows; build PyInstaller com VTK; seleção de segmentos por clique do mouse no 3D; gestos de toque no celular em aparelho real (só jsdom); aparência dos gráficos num monitor real.
-- Não implementado (itens de menu desabilitados e marcados "planejado"): MuJoCo/OpenSim, importação STEP, provedor de IA (só a arquitetura existe), PDF do SIM-001, parâmetros com fontes científicas.
+- Não implementado (itens de menu desabilitados e marcados "planejado"): OpenSim, importação STEP, provedor de IA (só a arquitetura existe), PDF do SIM-001, parâmetros com fontes científicas.
 - STL no celular: somente visualização (não é salvo no projeto); exibe no máximo ~4000 triângulos por quadro (amostragem) por desempenho.
 
 ---
 
 ## Histórico de versões
+
+### 1.1.0 — Motor biomecânico espacial 3D (209 testes)
+Núcleo espacial (rotações, quaternions, frames, juntas, cadeia, Jacobiano), cinemática 3D com IK, dinâmica espacial (M, C, G, energias, direta/inversa), integradores RK4/DOP853 com cancelamento, cena VTK dinâmica, BIO-003, adaptador MuJoCo opcional (4.0.1, coincide com o motor interno), aba BIO-003 no celular. Correções: abas 3D/Histórico/EXO-001 do celular não apareciam; `matrix_log` com ângulos pequenos. Não verificado: Windows/.exe, clique no 3D espacial, toque em aparelho real.
 
 ### 1.0.0-rc1 — Release candidate (127 testes) — pulou as versões 0.11 a 0.99 a pedido
 Reúne o que estava planejado para as versões intermediárias:
@@ -95,7 +100,7 @@ Cada versão foi entregue como ZIP próprio (`NEXUS_BIOMECHANICS_vX.Y.Z.zip`; a 
 
 ---
 
-## Para virar 1.0.0 final
-Veja `ACCEPTANCE.md`: verificar o `.exe` no Windows 11, informar fontes científicas para os parâmetros, e decidir sobre MuJoCo/OpenSim. Depois, trocar a versão em `application/version.py`.
+## Pendências da 1.1.0
+Veja `ACCEPTANCE.md`: verificar o `.exe` no Windows 11 (com SciPy/VTK), informar fontes científicas para os parâmetros, verificar clique 3D e toque no celular; OpenSim segue não implementado. Depois, trocar a versão em `application/version.py`.
 
-Documentação: `ACCEPTANCE.md`, `ARCHITECTURE.md`, `USER_GUIDE.md`, `SIMULATION_METHODS.md`, `INSTALLATION.md`, `CHANGELOG.md`.
+Documentação: `ACCEPTANCE.md`, `ARCHITECTURE.md`, `USER_GUIDE.md`, `SIMULATION_METHODS.md`, `SPATIAL_ENGINE.md`, `INSTALLATION.md`, `CHANGELOG.md`.

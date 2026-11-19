@@ -38,6 +38,10 @@ def _spec(result: dict):
     if rid == "EXO-001":
         from exoskeleton.analysis import assist
         return assist.report_markdown(result), make_exo_figure(result, dark=False), "EXO-001 — Assistência articular por exoesqueleto"
+    if rid == "BIO-003":
+        from research.experiments import bio003
+        from visualization.charts.bio001_plots import make_bio003_figure
+        return bio003.report_markdown(result), make_bio003_figure(result, dark=False), "BIO-003 — Spatial lower limb dynamics"
     raise NexusError(f"Relatório PDF não disponível para {rid}")
 
 

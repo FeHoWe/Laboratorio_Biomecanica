@@ -1,4 +1,15 @@
 # Changelog
+## 1.1.0 — Motor biomecânico espacial 3D
+- Núcleo espacial (`biomechanics/spatial/`): rotações (Rodrigues, log, Euler ZXY), quaternions, transformações, árvore de frames, corpo rígido (inércia validada), juntas (revoluta, prismática, universal, esférica 3 DOF, fixa), cadeia, Jacobiano geométrico.
+- Cinemática 3D: FK, velocidades/acelerações, IK por mínimos quadrados amortecidos (tolerância, limite de iterações, singularidade, alcance, mensagens), trajetórias articulares e cartesianas.
+- Dinâmica espacial `M q̈ + C q̇ + G = τ + JᵀF`: M, G, C (Newton-Euler, verificado contra Christoffel), energias, potência, trabalho, dinâmica inversa/direta, cargas externas. Integradores RK4 e DOP853 (SciPy) com cancelamento, progresso e detecção de divergência.
+- Visualização 3D dinâmica (VTK): atualiza `user_matrix` (sem recriar atores), eixos locais, CM, vetores, trajetória, câmeras, reprodução (play/pause/reiniciar/velocidade).
+- **BIO-003 Spatial lower limb dynamics** (quadril 3 DOF, joelho 1, tornozelo 2): diálogo, execução em thread, gráficos, CSV/.md/PNG/PDF, registro no projeto/histórico, reexecução determinística.
+- Adaptador MuJoCo opcional (testado com 4.0.1): M, viés, dinâmica inversa, FK, energia e trajetória coincidem com o motor interno. OpenSim não implementado.
+- Mobile: aba BIO-003 (porta JS conferida numericamente contra o Python). **Correção:** as abas 3D, Histórico e EXO-001 da página mobile anterior (0.7–1.0.0-rc1) não apareciam (lista de abas incompleta); agora há teste de visibilidade de todas as abas.
+- Correção: `matrix_log` perdia precisão para ângulos muito pequenos (arccos → atan2).
+- `scipy` passa a ser dependência (requirements.txt). 209 testes.
+- Não verificado: Windows/.exe com SciPy e VTK, clique do mouse no 3D espacial, gestos de toque em aparelho real, desempenho de BIO-003 em sessões longas, parâmetros sem fonte científica.
 ## 1.0.0-rc1 — Release candidate (pulou 0.11–0.99 a pedido)
 - Importação de STL (desktop e celular) com validação e estatísticas; malha apenas visual.
 - Arquitetura do módulo de IA (sem provedor; rótulo obrigatório "gerado por IA").

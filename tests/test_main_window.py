@@ -75,6 +75,8 @@ def test_console_receives_logs(win):
 
 
 def test_diagnostics_reports_missing_libs_honestly(win):
+    import logging
+    logging.getLogger("nexus").setLevel(logging.INFO)   # o teste não deve depender de outro teste ter configurado o log
     win.diagnostics()
     text = win.console.toPlainText()
     assert "PySide6" in text and "[AUSENTE]" in text or "[OK]" in text
@@ -257,3 +259,61 @@ def test_ai_action_disabled_without_provider_and_runs_with_fake(win, tmp_path, m
     win.run_ai_analysis()
     txt = win.results.toPlainText()
     assert "Gerado por IA" in txt and "fake-1" in txt and "Limitações" in txt
+
+
+def test_bio003_gui_flow_worker_player_and_rerun(win, tmp_path, qtbot, monkeypatch):
+    import numpy as np
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QFileDialog
+    from interface.dialogs.bio003_dialog import Bio003Dialog
+    from research.experiments import bio003
+    small = bio003.default_params()
+    small.duration_s, small.dt_s = 0.1, 0.002
+    monkeypatch.setattr(Bio003Dialog, "exec", lambda self: True)
+    monkeypatch.setattr(Bio003Dialog, "params", lambda self: small)
+    assert not win.act_bio3.isEnabled()
+    win.manager.create(tmp_path / "p", "P")
+    assert win.act_bio3.isEnabled()
+    win.new_bio003()
+    qtbot.waitUntil(lambda: win.last_result is not None, timeout=60000)
+    win._thread.wait()
+    assert win.last_result["id"] == "BIO-003" and win.manager.data["experiments"][0]["id"] == "BIO-003-001"
+    assert (tmp_path / "p" / "results" / "BIO-003-001.csv").is_file() and "Energia mecânica" in win.results.toPlainText()
+    assert win.act_csv.isEnabled() and win.act_md.isEnabled() and win.act_png.isEnabled() and win.act_pdf.isEnabled()
+    assert not win.act_compare.isEnabled()
+    for name, fn in (("b.csv", win.export_csv), ("b.md", win.export_report), ("b.png", win.export_png), ("b.pdf", win.export_pdf_report)):
+        monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, n=name: (str(tmp_path / n), ""))
+        fn()
+        assert (tmp_path / name).stat().st_size > 100
+    # player: controla só o índice do quadro; sem viewport GL (offscreen) a animação 3D não existe e isso é avisado, não simulado
+    assert win.player.isEnabled() and win.player.ctrl is not None and len(win.player.ctrl.t) == len(win.last_result["t"])
+    frames = []
+    win.player.frame_changed.connect(frames.append)
+    win.player.slider.setValue(10)
+    assert frames[-1] == 10 and "0.020" in win.player.label.text()
+    win.player.toggle(); assert win.player.ctrl.playing
+    win.player.toggle(); assert not win.player.ctrl.playing
+    win.player.restart(); assert frames[-1] == 0
+    assert win.viewport3d.available is False and win.viewport3d.show_spatial_frame(win.last_result["q"][0]) is None
+    before = win.last_result["q"].copy()
+    win.tree.setCurrentItem(win.tree.findItems("BIO-003 #1", Qt.MatchRecursive)[0])
+    win.last_result = None
+    win.rerun_selected()
+    qtbot.waitUntil(lambda: win.last_result is not None, timeout=60000)
+    win._thread.wait()
+    assert np.array_equal(win.last_result["q"], before) and len(win.manager.data["experiments"]) == 1
+
+
+def test_bio003_dialog_validates_and_roundtrips(qtbot):
+    from interface.dialogs.bio003_dialog import Bio003Dialog
+    from research.experiments import bio003
+    d = Bio003Dialog()
+    qtbot.addWidget(d)
+    p = d.params()
+    assert p.to_dict() == bio003.default_params().to_dict() | {"dt_s": p.dt_s, "duration_s": p.duration_s, "gravity_m_s2": list(p.gravity_m_s2)}
+    d.dof.item(0, 2).setText("999")           # pose inicial fora dos limites
+    d._accept()
+    assert "fora dos limites" in d.error.text() and d.result() != 1
+    d.dof.item(0, 2).setText("abc")
+    with pytest.raises(bio003.Bio003Error, match="inválido"):
+        d.params()

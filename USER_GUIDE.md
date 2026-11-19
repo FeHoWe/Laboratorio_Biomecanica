@@ -9,3 +9,9 @@ Modelo → Importar malha STL…, escolha o arquivo e a unidade das coordenadas 
 
 ## Análise por IA
 A arquitetura existe, mas nenhum provedor está incluído; por isso Análise → "Análise assistida por IA" fica desabilitado. Quando houver um provedor, toda saída virá rotulada como "Gerado por IA — não validado", com provedor, modelo e limitações, e nunca entra nos cálculos.
+
+## BIO-003 — Dinâmica espacial do membro inferior (3D)
+Pesquisa → Novo experimento BIO-003 (Ctrl+Alt+B). Preencha: segmentos (comprimento, massa, CM como fração de L) e, por grau de liberdade (quadril flexão/abdução/rotação, joelho, tornozelo dorsiflexão/inversão): limites, pose inicial (°), velocidade inicial (°/s), torque constante e senoidal (N·m, Hz). Defina gravidade, duração, passo e integrador (rk4 ou adaptive). A simulação roda em segundo plano (cancelável).
+Resultado: gráficos (ângulo, velocidade, aceleração, torque, potência, energias), resumo com deriva de energia e balanço trabalho×energia, e animação 3D (aba "Reprodução 3D": reproduzir/pausar/reiniciar, velocidade, câmera, eixos locais, CM). Sem torques a energia mecânica deve se conservar (a deriva é reportada). Limites articulares **não** são impostos: ultrapassagens são avisadas. Reexecutar: selecione o experimento na árvore → Pesquisa → Reexecutar (mesmo resultado).
+Opcional: com `pip install mujoco`, Simulação → Comparar último BIO-003 com MuJoCo (só dinâmica livre). Parâmetros DEMONSTRATIVOS; sem precisão clínica.
+No celular: aba BIO-003 (pose, velocidades, torques, duração, dt; RK4; animação 3D; registrar no projeto).

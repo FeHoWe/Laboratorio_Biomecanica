@@ -42,6 +42,8 @@ def make_figure(result: dict, dark: bool = True) -> Figure:
 def save_png(result: dict, path: Path | str, dark: bool = False) -> None:
     if result.get("id") == "EXO-001":
         fig = make_exo_figure(result, dark=dark)
+    elif result.get("id") == "BIO-003":
+        fig = make_bio003_figure(result, dark=dark)
     else:
         fig = make_figure_n(result, dark=dark) if result["A"]["q"].shape[1] > 2 else make_figure(result, dark=dark)
     FigureCanvasAgg(fig)
@@ -123,4 +125,36 @@ def make_exo_figure(result: dict, dark: bool = True) -> Figure:
             sp.set_color(grid)
         ax.legend(facecolor=bg, labelcolor=fg, fontsize=6.5, edgecolor=grid)
     fig.suptitle("EXO-001 — exoesqueleto, parâmetros DEMONSTRATIVOS", color=theme.WARN, fontsize=8)
+    return fig
+
+
+def make_bio003_figure(result: dict, dark: bool = True) -> Figure:
+    """BIO-003: ângulos, velocidades, acelerações, torques, potência e energias (KE/PE/ME) da dinâmica espacial."""
+    bg, fg, grid = (theme.PANEL, theme.TEXT, theme.PANEL2) if dark else ("white", "black", "#dddddd")
+    t, names = result["t"], result["dof_names"]
+    colors = [theme.BLUE, theme.CYAN, theme.WARN, "#3dd68c", "#ff5c6c", "#c792ea"]
+    fig = Figure(figsize=(11, 8), facecolor=bg, layout="constrained")
+    axes = fig.subplots(3, 2, sharex=True).ravel()
+    panels = [("Ângulo (°)", np.degrees(result["q"])), ("Vel. angular (°/s)", np.degrees(result["qd"])),
+              ("Acel. angular (°/s²)", np.degrees(result["qdd"])), ("Torque (N·m)", result["tau"]), ("Potência (W)", result["power"])]
+    for ax, (label, data) in zip(axes[:5], panels):
+        for k, n in enumerate(names):
+            ax.plot(t, data[:, k], color=colors[k], lw=1.3, label=n)
+        ax.set_ylabel(label, color=fg, fontsize=6.5)
+    ax = axes[5]
+    ax.plot(t, result["ke"], color=theme.BLUE, lw=1.5, label="Cinética")
+    ax.plot(t, result["pe"], color=theme.CYAN, lw=1.5, label="Potencial")
+    ax.plot(t, result["me"], color=theme.WARN, lw=1.8, label="Mecânica")
+    ax.set_ylabel("Energia (J)", color=fg, fontsize=6.5)
+    for ax in axes:
+        ax.set_facecolor(bg)
+        ax.tick_params(colors=fg, labelsize=6.5)
+        ax.grid(True, color=grid, lw=0.6)
+        for sp in ax.spines.values():
+            sp.set_color(grid)
+    axes[0].legend(facecolor=bg, labelcolor=fg, fontsize=5.5, edgecolor=grid, ncol=2)
+    axes[5].legend(facecolor=bg, labelcolor=fg, fontsize=6, edgecolor=grid)
+    axes[4].set_xlabel("t (s)", color=fg, fontsize=6.5)
+    axes[5].set_xlabel("t (s)", color=fg, fontsize=6.5)
+    fig.suptitle("BIO-003 — dinâmica espacial do membro inferior, parâmetros DEMONSTRATIVOS", color=theme.WARN, fontsize=8)
     return fig

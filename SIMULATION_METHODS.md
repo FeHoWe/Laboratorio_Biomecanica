@@ -1,4 +1,4 @@
-# Métodos de simulação (v0.2.0)
+# Métodos de simulação (v1.1.0)
 Unidades SI (m, kg, s, rad, N, N.m). Plano vertical x-y, gravidade -y (g = 9,80665 m/s²).
 
 ## Cadeia planar de 2 segmentos (`simulation/kinematics/planar.py`)
@@ -23,3 +23,6 @@ Plano sagital exibido em 3D (x anterior, y cima, z lateral). Frames 4x4: T_seg =
 M = Σ(m_i Jv_iᵀ Jv_i + I_i Jw_iᵀ Jw_i); G = ∂U/∂q (Σ m_i g Jv_i[y]); C q̇ = Ṁ q̇ − ∂T/∂q com ∂M/∂q por diferenças centrais (h = 1e-6). Para N = 2 coincide com o modelo de 2 segmentos (teste). Ângulos relativos: q1 absoluto, qk relativo ao segmento anterior.
 ## Verificação
 Testes: transformações, conversão de unidades, FK/IK (ida e volta), Jacobiano vs diferenças finitas, torque analítico de braço horizontal, ∂U/∂q, consistência dinâmica direta/inversa, conservação de energia, período de pêndulo físico.
+
+## Motor espacial 3D e BIO-003 (V1.1)
+Equações, convenções de sinais/eixos/frames, algoritmos (Jacobiano geométrico, IK amortecida, Newton-Euler, Christoffel, RK4, DOP853), hipóteses, limitações, testes e fontes: `SPATIAL_ENGINE.md`. Verificações usadas: M simétrica e definida positiva; `Ṁ − 2C` antissimétrica; `G = ∇V`; inversa×direta; conservação de energia sem torques; trabalho dos torques = ΔE; ordem 4 do RK4; comparação com `PlanarChain` (embutindo o plano) e com MuJoCo 4.0.1.

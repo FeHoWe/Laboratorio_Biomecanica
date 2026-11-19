@@ -1,11 +1,11 @@
 {
   "format": "nexus-biomechanics-project",
   "schema_version": 1,
-  "id": "843eec57-7b2e-47d7-b554-4f71bff1a9c3",
+  "id": "6b716035-d15b-4f42-b156-f27a7041d5fb",
   "name": "Teste mobile",
   "description": "",
-  "created": "2026-11-19T17:40:05+00:00",
-  "modified": "2026-11-19T17:40:05+00:00",
+  "created": "2026-11-19T18:42:20+00:00",
+  "modified": "2026-11-19T18:42:21+00:00",
   "models": [
     {
       "name": "Membro inferior simplificado (DEMONSTRATIVO)",
@@ -90,7 +90,7 @@
       "name": "BIO-001 #1",
       "id": "BIO-001-001",
       "type": "BIO-001",
-      "created": "2026-11-19T17:40:05+00:00",
+      "created": "2026-11-19T18:42:20+00:00",
       "params": {
         "duration_s": 1,
         "samples": 201,
@@ -190,7 +190,7 @@
       "name": "BIO-002 #1",
       "id": "BIO-002-001",
       "type": "BIO-002",
-      "created": "2026-11-19T17:40:05+00:00",
+      "created": "2026-11-19T18:42:20+00:00",
       "params": {
         "duration_s": 1,
         "samples": 151,
@@ -340,7 +340,7 @@
       "name": "EXO-001 #1",
       "id": "EXO-001-001",
       "type": "EXO-001",
-      "created": "2026-11-19T17:40:05+00:00",
+      "created": "2026-11-19T18:42:20+00:00",
       "params": {
         "model": {
           "name": "A — Membro inferior humano simplificado (3 seg.)",
@@ -429,7 +429,7 @@
       "name": "SIM-001 #1",
       "id": "SIM-001-001",
       "type": "SIM-001",
-      "created": "2026-11-19T17:40:05+00:00",
+      "created": "2026-11-19T18:42:21+00:00",
       "params": {
         "name": "Cadeia de 2 segmentos (DEMONSTRATIVO)",
         "l1": 0.43,
@@ -457,6 +457,166 @@
         "messages": [
           "Deriva máxima de energia: 3.230e-11 (relativa). OK.",
           "Parâmetros demonstrativos: resultados ilustram o método, não anatomia real."
+        ]
+      },
+      "results_file": null
+    },
+    {
+      "name": "BIO-003 #1",
+      "id": "BIO-003-001",
+      "type": "BIO-003",
+      "created": "2026-11-19T18:42:21+00:00",
+      "params": {
+        "segments": {
+          "femur": {
+            "length_m": 0.43,
+            "mass_kg": 7,
+            "com_frac": 0.43
+          },
+          "tibia": {
+            "length_m": 0.4,
+            "mass_kg": 3.2,
+            "com_frac": 0.43
+          },
+          "foot": {
+            "length_m": 0.24,
+            "mass_kg": 1,
+            "com_frac": 0.45
+          }
+        },
+        "limits_deg": [
+          [
+            -20,
+            120
+          ],
+          [
+            -30,
+            40
+          ],
+          [
+            -35,
+            35
+          ],
+          [
+            0,
+            140
+          ],
+          [
+            -50,
+            30
+          ],
+          [
+            -20,
+            20
+          ]
+        ],
+        "q0_deg": [
+          20,
+          5,
+          0,
+          30,
+          0,
+          0
+        ],
+        "qd0_deg_s": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "gravity_m_s2": [
+          0,
+          -9.80665,
+          0
+        ],
+        "tau_const_nm": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "tau_amp_nm": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "tau_freq_hz": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "duration_s": 0.2,
+        "dt_s": 0.002,
+        "method": "rk4",
+        "source": "DEMONSTRATIVO (hipotético, sem fonte científica verificada)"
+      },
+      "summary": {
+        "A": {
+          "samples": 101,
+          "method": "rk4",
+          "dt_s": 0.002,
+          "conservative_run": true,
+          "energy_initial_j": 63.07435940223306,
+          "energy_final_j": 63.07435937087987,
+          "energy_drift_rel": 8.636008911028027e-10,
+          "work_torques_j": 0,
+          "delta_energy_j": -3.1353188489902095e-8,
+          "work_energy_residual_j": 3.1353188489902095e-8,
+          "peak_abs_ang_vel_rad_s": [
+            2.4647360350626006,
+            0.1527603232062377,
+            0.5021854582328019,
+            7.435807361785868,
+            18.61842729021713,
+            0.5393188910501298
+          ],
+          "peak_abs_ang_acc_rad_s2": [
+            16.368077351235463,
+            1.9742810395876844,
+            7.741945325342696,
+            67.13143254378545,
+            168.14462137430053,
+            7.744813929346957
+          ],
+          "peak_abs_torque_nm": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "peak_abs_power_w": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "ke_max_j": 2.3923081649582176,
+          "pe_range_j": 2.392308111136252,
+          "limit_violations": 27,
+          "foot_tip_final_m": [
+            0.195143519207457,
+            -0.12894986573891237,
+            -0.0619128583691614
+          ]
+        },
+        "messages": [
+          "Parâmetros demonstrativos: resultados ilustram o método, não anatomia real nem precisão clínica.",
+          "Simplificações mecânicas: quadril 3 DOF rotacionais, joelho 1 DOF, tornozelo 2 DOFs; sem músculos, ligamentos, contato ou atrito.",
+          "AVISO: limite articular excedido em 27 amostras (primeiro em t=0.1480 s). O motor NÃO impõe os limites na dinâmica."
         ]
       },
       "results_file": null
