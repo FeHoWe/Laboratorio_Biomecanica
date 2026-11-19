@@ -11,7 +11,7 @@ from PySide6 import __version__ as pyside_version
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QKeySequence
 from PySide6.QtWidgets import (QDockWidget, QFileDialog, QInputDialog, QLabel, QMainWindow, QMessageBox,
-                               QPlainTextEdit, QStackedWidget, QTabWidget)
+                               QPlainTextEdit, QStackedWidget, QTabWidget, QVBoxLayout, QWidget)
 
 from application import event_manager as ev
 from application.project_manager import ProjectManager
@@ -23,16 +23,18 @@ from interface.dialogs.new_project_dialog import NewProjectDialog
 from interface.panels.component_tree import ComponentTree
 from interface.panels.console_panel import ConsolePanel
 from interface.panels.properties_panel import PropertiesPanel
+from interface.dialogs.bio001_dialog import Bio001Dialog
+from interface.widgets.animation_2d import Animation2D
 from interface.widgets.viewport_placeholder import ViewportPlaceholder
+from PySide6.QtCore import Qt as _Qt  # noqa: F401
+from research.experiments import bio001
 
 log = logging.getLogger("nexus.ui")
 
 PLANNED = {
-    "Modelo": [("Novo modelo de membro inferior", "Fase 2"), ("Editar articulações", "Fase 2")],
-    "Biomecânica": [("Cinemática direta/inversa", "Fase 3"), ("Torque e forças", "Fase 3")],
-    "Simulação": [("Executar simulação", "Fase 3"), ("Integração MuJoCo", "Fase 6")],
-    "Análise": [("Gráficos de ângulo/torque", "Fase 5"), ("Comparar modelos", "Fase 4")],
-    "Pesquisa": [("Experimento BIO-001", "Fase 5"), ("Exportar CSV/PDF", "Fase 5")],
+    "Modelo": [("Editor 3D de modelo e articulações", "Fase 2"), ("Importar STL", "Fase 2")],
+    "Biomecânica": [("Modelo de membro inferior com 3 segmentos", "Fase 4"), ("Músculos / OpenSim", "Fase 6")],
+    "Simulação": [("Simulação dinâmica interativa", "Fase 4"), ("Integração MuJoCo", "Fase 6")],
 }
 OPTIONAL_LIBS = ["numpy", "scipy", "sympy", "vtk", "pyvista", "mujoco", "opensim", "pyqtgraph", "matplotlib"]
 
@@ -45,6 +47,8 @@ class MainWindow(QMainWindow):
         self._build_central()
         self._build_docks()
         self._build_menus()
+        self.tree.selection_info.connect(lambda *_: self.act_rerun.setEnabled(
+            self.manager.is_open and self._selected_experiment() is not None))
         self._status = QLabel()
         self.statusBar().addPermanentWidget(self._status)
         manager.events.subscribe(ev.PROJECT_OPENED, self._refresh)
@@ -58,7 +62,16 @@ class MainWindow(QMainWindow):
     def _build_central(self) -> None:
         self.stack = QStackedWidget()
         self.dashboard = Dashboard()
-        self.viewport = ViewportPlaceholder()
+        self.viewport = QTabWidget()  # área central quando há projeto aberto
+        self.viewport3d = ViewportPlaceholder()
+        self.anim = Animation2D()
+        self.plot_host = QWidget()
+        self.plot_layout = QVBoxLayout(self.plot_host)
+        self.plot_layout.addWidget(QLabel("Execute BIO-001 (menu Pesquisa) para ver os gráficos."))
+        self.viewport.addTab(self.viewport3d, "Viewport 3D (planejado)")
+        self.viewport.addTab(self.anim, "Animação 2D")
+        self.viewport.addTab(self.plot_host, "Gráficos BIO-001")
+        self.last_result: dict | None = None
         self.stack.addWidget(self.dashboard)
         self.stack.addWidget(self.viewport)
         self.setCentralWidget(self.stack)
@@ -70,13 +83,14 @@ class MainWindow(QMainWindow):
         self.tree = ComponentTree()
         self.props = PropertiesPanel()
         self.console = ConsolePanel()
-        self.results = QPlainTextEdit("Nenhum resultado. Simulações serão implementadas nas Fases 3-5.")
+        self.results = QPlainTextEdit("Nenhum resultado ainda. Use Pesquisa > Novo experimento BIO-001.")
         self.results.setReadOnly(True)
         self.tree.selection_info.connect(self.props.show_item)
         self.props.apply_requested.connect(self._apply_metadata)
         self.dock_tree = self._dock("Componentes", self.tree, Qt.LeftDockWidgetArea)
         self.dock_props = self._dock("Propriedades", self.props, Qt.RightDockWidgetArea)
         tabs = QTabWidget()
+        self.bottom_tabs = tabs
         tabs.addTab(self.console, "Console")
         tabs.addTab(self.results, "Resultados")
         self.dock_bottom = self._dock("Resultados e Console", tabs, Qt.BottomDockWidgetArea)
@@ -125,6 +139,19 @@ class MainWindow(QMainWindow):
             for text, phase in items:
                 self._act(menu, f"{text} (planejado — {phase})", lambda: None, enabled=False)
 
+        m = mb.addMenu("A&nálise")
+        self.act_compare = self._act(m, "Comparação A vs B (último BIO-001)", self.show_comparison, enabled=False)
+        self.act_png = self._act(m, "Exportar gráficos (PNG)…", self.export_png, enabled=False)
+        self._act(m, "Análises avançadas / IA (planejado — Fase 6)", lambda: None, enabled=False)
+
+        m = mb.addMenu("&Pesquisa")
+        self.act_bio = self._act(m, "Novo experimento &BIO-001…", self.new_bio001, "Ctrl+B", enabled=False)
+        self.act_rerun = self._act(m, "Reexecutar experimento selecionado", self.rerun_selected, enabled=False)
+        m.addSeparator()
+        self.act_csv = self._act(m, "Exportar CSV…", self.export_csv, enabled=False)
+        self.act_md = self._act(m, "Exportar relatório técnico (.md)…", self.export_report, enabled=False)
+        self._act(m, "Relatório PDF (planejado — Fase 5)", lambda: None, enabled=False)
+
         m = mb.addMenu("&Ferramentas")
         self._act(m, "Diagnóstico do ambiente", self.diagnostics)
         self._act(m, "Abrir pasta de logs", self.open_logs)
@@ -136,8 +163,12 @@ class MainWindow(QMainWindow):
     def _refresh(self, **_kw) -> None:
         pm = self.manager
         is_open = pm.is_open
-        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename):
+        for a in (self.act_save, self.act_save_as, self.act_close, self.act_rename, self.act_bio):
             a.setEnabled(is_open)
+        has = is_open and self.last_result is not None
+        for a in (self.act_csv, self.act_md, self.act_png, self.act_compare):
+            a.setEnabled(has)
+        self.act_rerun.setEnabled(is_open and self._selected_experiment() is not None)
         self.stack.setCurrentWidget(self.viewport if is_open else self.dashboard)
         self.tree.populate(pm.data)
         if not is_open:
@@ -225,6 +256,85 @@ class MainWindow(QMainWindow):
 
     def _apply_metadata(self, name: str, description: str) -> None:
         self._guard(self.manager.update_metadata, name, description)
+
+    # ---- pesquisa: BIO-001 ----
+    def _selected_experiment(self):
+        item = self.tree.currentItem()
+        if item is None:
+            return None
+        kind, payload = item.data(0, _Qt.UserRole)
+        return payload if kind == "experiment" and "params" in payload else None
+
+    def new_bio001(self) -> None:
+        dlg = Bio001Dialog(parent=self)
+        if not dlg.exec():
+            return
+        params = dlg.params()
+        res = self._run_bio001(params)
+        if res is None:
+            return
+        self._guard(self.manager.add_experiment, bio001.EXPERIMENT_ID, params.to_dict(),
+                    bio001.summary_dict(res), lambda path: bio001.export_csv(res, path))
+        self._show_result(res)
+
+    def rerun_selected(self) -> None:
+        exp = self._selected_experiment()
+        if exp:
+            res = self._run_bio001(bio001.Bio001Params.from_dict(exp["params"]))
+            if res:
+                self._show_result(res)
+                log.info("Reexecução de %s concluída (determinística)", exp["id"])
+
+    def _run_bio001(self, params):
+        try:
+            res = bio001.run(params)
+        except NexusError as exc:
+            log.error("%s", exc)
+            QMessageBox.critical(self, APP_NAME, str(exc))
+            return None
+        for m in res["messages"]:
+            log.warning(m) if m.startswith("AVISO") else log.info(m)
+        return res
+
+    def _show_result(self, res: dict) -> None:
+        from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+        from visualization.charts.bio001_plots import make_figure
+        self.last_result = res
+        self.anim.set_result(res)
+        while self.plot_layout.count():
+            w = self.plot_layout.takeAt(0).widget()
+            if w:
+                w.deleteLater()
+        self.plot_layout.addWidget(FigureCanvasQTAgg(make_figure(res)))
+        lines = [f"BIO-001 — resultados (parâmetros DEMONSTRATIVOS)", ""]
+        for c in res["comparison"].values():
+            lines.append(f"{c['label']}\n   A: {c['A'][0]:.4g} / {c['A'][1]:.4g}   B: {c['B'][0]:.4g} / {c['B'][1]:.4g}"
+                         f"   (B/A: {', '.join('—' if r is None else f'{r:.3g}' for r in c['ratio_B_over_A'])})")
+        lines += [""] + res["messages"]
+        self.results.setPlainText("\n".join(lines))
+        self.viewport.setCurrentWidget(self.anim)
+        self._refresh()
+
+    def show_comparison(self) -> None:
+        self.viewport.setCurrentWidget(self.plot_host)
+        self.bottom_tabs.setCurrentWidget(self.results)
+
+    def _export(self, caption, filt, writer) -> None:
+        path, _ = QFileDialog.getSaveFileName(self, caption, "", filt)
+        if path and self.last_result and self._guard(writer, path):
+            log.info("Exportado: %s", path)
+
+    def export_csv(self) -> None:
+        self._export("Exportar CSV", "CSV (*.csv)", lambda p: bio001.export_csv(self.last_result, p))
+
+    def export_report(self) -> None:
+        def w(p):
+            Path(p).write_text(bio001.report_markdown(self.last_result), encoding="utf-8")
+        self._export("Exportar relatório", "Markdown (*.md)", w)
+
+    def export_png(self) -> None:
+        from visualization.charts.bio001_plots import save_png
+        self._export("Exportar gráficos", "PNG (*.png)", lambda p: save_png(self.last_result, p))
 
     # ---- ferramentas / ajuda ----
     def diagnostics(self) -> None:

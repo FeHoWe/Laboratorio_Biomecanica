@@ -143,6 +143,23 @@ class ProjectManager:
         self.dirty = True
         self.events.emit(ev.PROJECT_CHANGED, project=self)
 
+    def add_experiment(self, exp_type: str, params: dict, summary: dict, csv_writer=None) -> dict:
+        """Registra experimento reproduzível (parâmetros + resumo). csv_writer(path) grava results/<id>.csv."""
+        data = self._require_open()
+        n = sum(1 for e in data["experiments"] if e.get("type") == exp_type) + 1
+        exp_id = f"{exp_type}-{n:03d}"
+        entry = {"name": f"{exp_type} #{n}", "id": exp_id, "type": exp_type, "created": _now(),
+                 "params": params, "summary": summary, "results_file": None}
+        if csv_writer is not None:
+            rel = f"results/{exp_id}.csv"
+            csv_writer(self.path / rel)  # type: ignore[operator]
+            entry["results_file"] = rel
+        data["experiments"].append(entry)
+        self.dirty = True
+        log.info("Experimento registrado: %s", exp_id)
+        self.events.emit(ev.PROJECT_CHANGED, project=self)
+        return entry
+
     # ---- internos ----
     def _set(self, data: dict, path: Path, dirty: bool) -> None:
         self.data, self.path, self.dirty = data, path, dirty

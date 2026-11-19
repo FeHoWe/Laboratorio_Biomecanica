@@ -13,5 +13,7 @@ Unidades SI (m, kg, s, rad, N, N.m). Plano vertical x-y, gravidade -y (g = 9,806
 - M(q)q̈ + C(q,q̇) + G(q) = τ (Lagrange; segmentos rígidos com massa, CM e inércia). Integração RK4 passo fixo.
 ## Hipóteses e limitações
 Sem atrito, sem músculos, juntas ideais, 2D. Parâmetros de segmentos são entradas do usuário; nenhum dado antropométrico verificado está embutido. Não há validação clínica.
+## BIO-001
+Trajetória de mínimo jerk por junta; torque = dinâmica inversa − Jᵀ F; potência = τ·q̇; trabalho por trapézios; torque normalizado τ/(M·g·L) para comparar escalas diferentes. Reprodutível: parâmetros + resultados determinísticos. Teste: trabalho dos torques = variação de energia mecânica.
 ## Verificação
 Testes: transformações, conversão de unidades, FK/IK (ida e volta), Jacobiano vs diferenças finitas, torque analítico de braço horizontal, ∂U/∂q, consistência dinâmica direta/inversa, conservação de energia, período de pêndulo físico.
